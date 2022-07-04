@@ -2,10 +2,11 @@
 use std::io;
 use std::cmp::Ordering;
 use std::env::args;
+use unicode_segmentation::UnicodeSegmentation;
 // use BruteForceClass::BruteForceSearch;
 
 fn main() {
-    let mut maxLength: i8;
+    let mut maxLength: i8 = 0;
     let mut input_text = String::new(); // String to enter
     
     let mut password = String::new();
@@ -30,6 +31,8 @@ fn main() {
             let mut maxLenInput = String::new();
 
             io::stdin().read_line(&mut maxLenInput).expect("Failed to read line");
+
+            // Checks if entered string is number
             let mut maxLenInput: i8 = match maxLenInput.trim().parse() {
                 Ok(num) => num,
 
@@ -47,14 +50,41 @@ fn main() {
                 println!("\nNumber too big, it will take too long to brute force!");
                 continue;
             }
+            maxLength = maxLenInput;
 
             break;
-        }  
-        
+        }
+
         // Asks for password
         // Ask again if string is too long
-        println!("\nPlease enter a password to guess: ");
-        io::stdin().read_line(&mut input_text).expect("Failed to read line");
+        loop {
+            let mut passInput = String::new();
+            
+            println!("\nPlease enter a password to guess: ");
+            io::stdin().read_line(&mut passInput).expect("Failed to read line");
+            
+            let mut numOfChar: i8 = passInput.trim().graphemes(true).count() as i8;
+
+            // Handles bug where last char is a space
+            if passInput.chars().last().unwrap() == ' ' {
+                numOfChar -= 1;
+            }
+
+            if numOfChar as i8 > maxLength {
+                println!("\nPassword too long!");
+                continue;
+            }
+            else {
+                password = passInput;
+                break;
+            }
+        }
+
+        // Gets rid of whitespace after (converts String::new() to &str)
+        // Added benefit of string no longer being mutable
+        let password = password.trim();
+        println!("{}, length: {}", password, password.graphemes(true).count());
+
 
         /*
         // Asks for search complexity

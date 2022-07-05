@@ -3,7 +3,7 @@ use std::io;
 use std::cmp::Ordering;
 use std::env::args;
 use unicode_segmentation::UnicodeSegmentation;
-// use BruteForceClass::BruteForceSearch;
+mod bruteForceClass;
 
 fn main() {
     let mut maxLength: i8 = 0;
@@ -15,6 +15,8 @@ fn main() {
     let mut hasGuessedCorrect: bool = false;
     let mut numGuesses: u32 = 0;
     let mut wantToCrack: bool = true;
+
+    bruteForceClass::printmessage();
 
     //Welcome message
     println!("\n\n\nHello! Welcome to this brute force program!\
@@ -125,7 +127,8 @@ fn main() {
                 break;
             }
         }
-        println!("{}", complexChoice);
+
+
         // CALL BFSEARCH STRUCT HERE
         /*
         let BFSearch = BruteForceSearch {

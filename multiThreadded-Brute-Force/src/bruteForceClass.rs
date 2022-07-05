@@ -1,7 +1,12 @@
 use std::io;
 
+pub fn printmessage() {
+    println!("Hello new file!");
+}
+
+/*
 // Seen as class variables
-pub struct BruteForceSearch {
+pub struct BFSearch {
     maxLen: i8,
     realPassword: String::new(),
     passToTry: String::new(),
@@ -9,10 +14,10 @@ pub struct BruteForceSearch {
     numGuesses: u128,
     searchComplexity: char,
     lastGuess: String::new(),
-};
+}
 
 // Seen as class functions
-impl BruteForceSearch {
+impl BFSearch {
     // Adds characters to unicodeList
     pub fn setSearchLen(&mut self) {
         match searchComplexity {
@@ -38,5 +43,5 @@ impl BruteForceSearch {
         }
     }
 
-    pub fn
-};
+}
+*/

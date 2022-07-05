@@ -83,40 +83,51 @@ fn main() {
         // Gets rid of whitespace after (converts String::new() to &str)
         // Added benefit of string no longer being mutable
         let password = password.trim();
-        println!("{}, length: {}", password, password.graphemes(true).count());
-
-
-        /*
-        // Asks for search complexity
-        // Asks again if not a char
-        // Asks again if not correct character
-        println!("How in-depth would you like this search to go?\
+        
+        // Details on search complexities
+        println!("\nHow in-depth would you like this search to go?\
                  \nBasic: Only searches through the ASCII-code characters\
                  \n(Faster, but will miss passwords with ALT-Code characters. Examples: Ö, ÿ, ☺)\n\
                  \nExtended: Will search through every one of the ALT-code characters\
                  \n(Slower, but will check every typable password)\n\
                  \nFull: Will search through EVERY character in the entire Unicode Library.\
-                 \n(VERY Slow, but covers ALT-Code characters, and characters from every typable language\n\
-                 \n(Please type 'B' for Basic, 'E' for Extended, or 'F' for full):");
-        io::stdin().read_line(&mut input_text).expect("Failed to read line");
-        while input_text.len() != 1 {
-            println!("Too many characters! Please enter either B, E, or F.");
-            io::stdin().read_line(&mut input_text).expect("Failed to read line");
-        }
+                 \n(VERY Slow, but covers ALT-Code characters, and characters from every typable language\n");
         
-        match input_text {
-            "B"|"b"=>complexChoice = 'B',
-            "E"|"e"=>complexChoice = 'E',
-            "F"|"f"=>complexChoice = 'F',
-            _=> {
-                println!("Invalid entry! Please type in B for basic, E for extended, or F for full.");
-                io::stdin().read_line(&mut input_text).expect("Failed to read line");
-            }
-        };
-        
+        // Asks for search complexity
+        // Asks again if not a char
+        // Asks again if not correct character
+        loop {
+            let mut complexityInput = String::new();
+            println!("Please enter either B for Basic, E for Extended, or F for full.");
+            io::stdin().read_line(&mut complexityInput).expect("Failed to read line");
 
-        // CALL BFSEARCH STRUCT HERE
+            let mut numOfChar: i8 = complexityInput.trim().graphemes(true).count() as i8;
         
+            if numOfChar == 0 {
+                println!("Invalid Entry! (didn't enter anything)");
+                continue;
+            }
+
+            else {
+                // Converts to string slice, then trims the trailing newline
+                let mut complexityInput: &str = &complexityInput[..];
+                complexityInput = complexityInput.trim();
+
+                match complexityInput {
+                    "B"|"b"|"Basic"|"basic"|"BASIC" => complexChoice = 'B',
+                    "E"|"e"|"Extended"|"extended"|"EXTENDED" => complexChoice = 'E',
+                    "F"|"f"|"Full"|"full"|"FULL" => complexChoice = 'F',
+                    _=> {
+                        println!("\nInvalid entry! (not right character)");
+                        continue;
+                    }
+                };
+                break;
+            }
+        }
+        println!("{}", complexChoice);
+        // CALL BFSEARCH STRUCT HERE
+        /*
         let BFSearch = BruteForceSearch {
             realPassword: password,
             passToTry: passGuess,
@@ -124,15 +135,33 @@ fn main() {
 
 
         }
-        
+        */
 
         // Asks user if they want to continue 
         // Asks again if responce is not Yes or no
         // Convert to boolean for wantToCrack
-        println!("Do you wanna crack another password?");
-        io::stdin().read_line(&mut input_text).expect("Failed to read line");
+        loop {
+            let mut wantCrackInput = String::new();
+            println!("Do you wanna crack another password?");
+            io::stdin().read_line(&mut wantCrackInput).expect("Failed to read line");
+
+            // Converts to string slice, then trims the trailing newline
+            let mut wantCrackInput: &str = &wantCrackInput[..];
+            wantCrackInput = wantCrackInput.trim();
+
+            match wantCrackInput {
+                "Yes"|"yes"|"Y"|"y"|"YES" => wantToCrack = true,
+                "No"|"no"|"N"|"n"|"NO" => wantToCrack = false,
+                _ => {
+                    println!("\nInvalid entry!");
+                    continue;
+                }            
+            }
+            break;
+        }
         
-        */
+        
+        
         
         //match input_text{
         //

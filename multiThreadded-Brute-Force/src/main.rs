@@ -7,16 +7,11 @@ mod bruteForceClass;
 
 fn main() {
     let mut maxLength: i8 = 0;
-    let mut input_text = String::new(); // String to enter
-    
     let mut password = String::new();
-    let mut passGuess = String::new();
-    let mut complexChoice: char = ' ';
+    let mut complexityChoice: char = ' ';
     let mut hasGuessedCorrect: bool = false;
     let mut numGuesses: u32 = 0;
     let mut wantToCrack: bool = true;
-
-    bruteForceClass::printmessage();
 
     //Welcome message
     println!("\n\n\nHello! Welcome to this brute force program!\
@@ -82,9 +77,9 @@ fn main() {
             }
         }
 
-        // Gets rid of whitespace after (converts String::new() to &str)
-        // Added benefit of string no longer being mutable
+        // Gets rid of whitespace after
         let password = password.trim();
+        let password = String::from(password);
         
         // Details on search complexities
         println!("\nHow in-depth would you like this search to go?\
@@ -116,9 +111,9 @@ fn main() {
                 complexityInput = complexityInput.trim();
 
                 match complexityInput {
-                    "B"|"b"|"Basic"|"basic"|"BASIC" => complexChoice = 'B',
-                    "E"|"e"|"Extended"|"extended"|"EXTENDED" => complexChoice = 'E',
-                    "F"|"f"|"Full"|"full"|"FULL" => complexChoice = 'F',
+                    "B"|"b"|"Basic"|"basic"|"BASIC" => complexityChoice = 'B',
+                    "E"|"e"|"Extended"|"extended"|"EXTENDED" => complexityChoice = 'E',
+                    "F"|"f"|"Full"|"full"|"FULL" => complexityChoice = 'F',
                     _=> {
                         println!("\nInvalid entry! (not right character)");
                         continue;
@@ -128,17 +123,11 @@ fn main() {
             }
         }
 
+        // CALL BFSEARCH STRUCT HERE      
+        let mut BFS = bruteForceClass::BFSearch::new(maxLength, password, complexityChoice);
 
-        // CALL BFSEARCH STRUCT HERE
-        /*
-        let BFSearch = BruteForceSearch {
-            realPassword: password,
-            passToTry: passGuess,
-            searchComplexity: complexity,
-
-
-        }
-        */
+        BFS.printUnicodeListSize();
+        
 
         // Asks user if they want to continue 
         // Asks again if responce is not Yes or no
@@ -160,16 +149,8 @@ fn main() {
                     continue;
                 }            
             }
+
             break;
         }
-        
-        
-        
-        
-        //match input_text{
-        //
-        //}
-    };
-    
-
+    }
 }

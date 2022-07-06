@@ -5,7 +5,7 @@ use unicode_segmentation::UnicodeSegmentation;
 
 
 // Seen as class variables
-pub struct BFSearch {
+pub mut struct BFSearch {
     maxLength: i8,
     realPassword: String, //Immutable string slice
     passToTry: String,

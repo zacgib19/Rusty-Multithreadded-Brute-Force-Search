@@ -8,7 +8,7 @@ mod bruteForceClass;
 fn main() {
     let mut maxLength: i8 = 0;
     let mut password = String::new();
-    let mut complexityChoice: char = ' ';
+    let mut complexityChoice: char;
     let mut hasGuessedCorrect: bool = false;
     let mut numGuesses: u32 = 0;
     let mut wantToCrack: bool = true;
@@ -24,7 +24,7 @@ fn main() {
         // Ask again if not an integer
         // Ask again if less than 1 but bigger than 7
         loop {           
-            println!("Please enter the maximum length of password you want to guess (greater than 0): ");
+            println!("Please enter the maximum length of password you want to guess (greater than 0, less than 10): ");
             let mut maxLenInput = String::new();
 
             io::stdin().read_line(&mut maxLenInput).expect("Failed to read line");
@@ -43,7 +43,7 @@ fn main() {
                 println!("\nNumber too small!");
                 continue;
             }
-            else if maxLenInput > 7 {
+            else if maxLenInput > 10 {
                 println!("\nNumber too big, it will take too long to brute force!");
                 continue;
             }
@@ -123,10 +123,13 @@ fn main() {
             }
         }
 
-        // CALL BFSEARCH STRUCT HERE      
+        // CALL BFSEARCH STRUCT instance HERE      
         let mut BFS = bruteForceClass::BFSearch::new(maxLength, password, complexityChoice);
 
-        BFS.printUnicodeListSize();
+        BFS.startSearch();
+
+        // Debugging
+        BFS.debugging();
         
 
         // Asks user if they want to continue 

@@ -123,13 +123,15 @@ fn main() {
             }
         }
 
+        println!("\nStarting normal brute force cracking. NOTE, this may take a while!");
+
         // CALL BFSEARCH STRUCT instance HERE      
         let mut BFS = bruteForceClass::BFSearch::new(maxLength, password, complexityChoice);
 
         BFS.startSearch();
 
         // Debugging
-        BFS.debugging();
+        // BFS.debugging();
         
 
         // Asks user if they want to continue 

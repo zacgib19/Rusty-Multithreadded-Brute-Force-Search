@@ -196,9 +196,7 @@ impl BFSearch {
             }
 
             // If char at index is last 
-            else {    
-
-                
+            else {                   
                 // If only character in self.passGuess
                 if self.passGuess.graphemes(true).count() == 1 {
                     

@@ -1,7 +1,5 @@
  // Find library for keeping time for measuring how long it takes to crack
 use std::io;
-use std::cmp::Ordering;
-use std::env::args;
 use unicode_segmentation::UnicodeSegmentation;
 mod bruteForceClass;
 
@@ -129,6 +127,16 @@ fn main() {
         let mut BFS = bruteForceClass::BFSearch::new(maxLength, password, complexityChoice);
 
         BFS.startSearch();
+
+        if BFS.isFound {
+            println!("Password found! Your password was: {}", BFS.passGuess);
+            println!("It took {} tries to guess, and x number of seconds to crack!", BFS.numGuesses);
+        }
+
+        else {
+            println!("Despite {} guesses, your password couldn't be cracked. Great work!", BFS.numGuesses);
+        }
+
 
         // Debugging
         // BFS.debugging();

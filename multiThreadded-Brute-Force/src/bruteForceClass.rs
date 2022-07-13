@@ -1,6 +1,3 @@
-use std::io;
-use std::cmp::Ordering;
-use std::env::args;
 use unicode_segmentation::UnicodeSegmentation;
 use std::collections::HashMap;
 
@@ -9,12 +6,15 @@ use std::collections::HashMap;
 pub struct BFSearch {
     maxLength: i8,
     realPassword: String,      //Immutable string slice
-    passGuess: String,
+    pub passGuess: String,
     lastGuess: String,
-    charMap: HashMap<i32, char>,
-    numGuesses: u128,
+    charFromIntMap: HashMap<i32, String>,
+    intFromCharMap: HashMap<String, i32>,
+    pub numGuesses: u128,
     currentIndex: usize,       //Index for string array in binary search algorithm
+    firstChar: char,           
     lastChar: String,
+    pub isFound: bool,
 }
 
 // Seen as class functions
@@ -23,8 +23,10 @@ impl BFSearch {
     // Constructor that implements default variables
     pub fn new(maxLength: i8, realPassword: String, searchComplexity: char) -> Self {
         let mut tempCharMap = HashMap::new();
-        let mut tempCharList: Vec<char> = Vec::new(); //Temporary char array used for charMap
-        let mut tempChar: char = ' '; //Temporary character used for lastChar
+        let mut tempIntMap = HashMap::new();
+        let mut tempCharList: Vec<char> = Vec::new(); //Temporary char array used for charFromIntMap
+        let mut tempFChar: char = ' '; //Temporary character used for firstChar
+        let mut tempLChar: char = ' '; //Temporary character used for lastChar
         
         // Sets unicode list to iterate over
         match searchComplexity {
@@ -32,7 +34,7 @@ impl BFSearch {
             // Basic ASCII
             'B'|'b' => {
                 //DEBUGGING should be from ' ' to '~'
-                for ch in 'A'..='F' {
+                for ch in ' '..='~' {
                     tempCharList.push(ch);
                 }           
             },
@@ -89,11 +91,16 @@ impl BFSearch {
 
         }
 
+        // Convert vector to hashmap
         for i in 0..tempCharList.len() {
-            tempCharMap.insert(i, tempCharList[i]);
+            tempCharMap.insert(i as i32, String::from(tempCharList[i]));  //used for charToInt
+            tempIntMap.insert(String::from(tempCharList[i]), i as i32);   //used for intToChar
         } 
+       
 
-        tempChar = tempCharList[tempCharList.len()-1];
+        // Gets first and last character
+        tempFChar = tempCharList[0];
+        tempLChar = tempCharList[tempCharList.len()-1];
         
         // Initalizes and returns BFsearch Struct (no semicolon)
         Self {
@@ -101,10 +108,13 @@ impl BFSearch {
             realPassword,
             passGuess: String::new(),
             lastGuess: String::new(),
-            charMap: tempCharMap,
+            charFromIntMap: tempCharMap,
+            intFromCharMap: tempIntMap,
             numGuesses: 0,
             currentIndex: 0,
-            lastChar: String::from(tempChar),
+            firstChar: tempFChar,
+            lastChar: String::from(tempLChar),  //Variable used for many comparisons, needs to be string
+            isFound: false,
         }
     }
 
@@ -112,11 +122,15 @@ impl BFSearch {
     // Starts brute force search
     pub fn startSearch (&mut self) {   
         self.getLastGuess();
-
         
         while !(self.isLastGuess() && self.isPasswordMatch()) {
-            self.numGuesses += 1;
+            
             if self.isPasswordMatch() {
+                self.isFound = true;
+                break;
+            }
+
+            else if self.isLastGuess() {
                 break;
             }
 
@@ -125,13 +139,14 @@ impl BFSearch {
                 self.passGuess = self.str_next();
             }
 
+            self.numGuesses += 1;
             //Debugging
             // print!("{}, ", self.passGuess);
         }
         
     }
 
-    // Sets lastGuess to maxLength copies of the last character in charMap
+    // Sets lastGuess to maxLength copies of the last character in charFromIntMap
     fn getLastGuess (&mut self) {
         // Figure out lastGuess
         for i in 0..self.maxLength {
@@ -151,64 +166,61 @@ impl BFSearch {
 
     // Updates passGuess in binary search fashion
     fn str_next(&mut self) -> String {
-        
+
         // For very first guess
-        if self.passGuess.graphemes(true).count() == 0 {
+        if self.numGuesses == 0 {
             // Add first character
-            self.passGuess.push(self.charMap.get(&0).unwrap());
+            self.passGuess.push(self.firstChar);
             return self.passGuess.clone();
         }
 
         // For every other guess
         else {
             // New instance of this supposed to run each recursion of str_next()
-            // Vector iterator something
-            let mut currCharIndex = self.charMap.entry(self.passGuess
+            let mut currCharMapIndex = *self.intFromCharMap.get(self.passGuess
                                                 .graphemes(true)
                                                 .nth(self.currentIndex)
-                                                .unwrap()
-                                                );                        // Dont initiallize to 0!
+                                                .unwrap()    //<- Unwraps option<str> to str                                               
+                                                ).unwrap();  //<- Unwraps option<i32> to i32
 
-            
-            match self.charMap.get(&currCharIndex) {
-                // If char at index is not the last character in self.charMap
-                Some(&_) {
-                    println!("{}", currCharIndex);
+                        
+            // If char at index is not the last character in self.charFromIntMap
+            if self.passGuess.graphemes(true).nth(self.currentIndex).unwrap() != self.lastChar {
 
-                currCharIndex += 1;
-                
+                currCharMapIndex += 1;
                 // Change passGuess' character at currentIndex position
-                self.passGuess.pop();
-                self.passGuess.push(self.charMap.get(currCharIndex));
+                self.passGuess.remove(self.currentIndex);
+                self.passGuess.insert_str(self.currentIndex, &*self.charFromIntMap.get(&currCharMapIndex).unwrap());
+                
                 return self.passGuess.clone();
-                }
             }
 
-            // If last character in self.charMap
-            else {
+            // If char at index is last 
+            else {    
+
+                
                 // If only character in self.passGuess
                 if self.passGuess.graphemes(true).count() == 1 {
+                    
                     // Reset first character
                     self.passGuess.remove(0);
-                    self.passGuess.insert(0, self.charMap.get(&0));
+                    self.passGuess.insert(0, self.firstChar);
                     // Add second character
-                    self.passGuess.push(self.charMap.get(&0));
+                    self.passGuess.push(self.firstChar);
 
-
-                    // Reset currCharIndex
-                    currCharIndex = self.charMap.get(&0);
-                    
-
+                    // Reset currCharMapIndex
+                    currCharMapIndex = 0;
                     return self.passGuess.clone();
                 }
 
+
                 // Else if time to add another letter
-                else if (self.passGuess.graphemes(true).count() == (self.currentIndex + 1)) {
-                    // Replace character at index with first character of charMap
+                else if self.passGuess.graphemes(true).count() == (self.currentIndex + 1) {
+                    // Replace character at index with first character of charFromIntMap
                     self.passGuess.remove(self.currentIndex);
-                    self.passGuess.insert(self.currentIndex, self.charMap[0]);
-                    // Append first character of charMap to passGuess
-                    self.passGuess.push(self.charMap[0]);
+                    self.passGuess.insert(self.currentIndex, self.firstChar);
+                    // Append first character of charFromIntMap to passGuess
+                    self.passGuess.push(self.firstChar);
                     return self.passGuess.clone();
                 }
 
@@ -222,19 +234,13 @@ impl BFSearch {
                     self.currentIndex += 1;
                     let mut returnString = self.str_next();
                     self.currentIndex -= 1;
-                    // Replace character at currentIndex with first char in charMap
+                    // Replace character at currentIndex with first char in charFromIntMap
                     returnString.remove(self.currentIndex);
-                    returnString.insert(self.currentIndex, self.charMap[0]);
+                    returnString.insert(self.currentIndex, self.firstChar);
 
                     return returnString;
                 }
-            }
-        };
-    }
-
-    // Debugging
-    pub fn debugging(&self) {
-        
-    }
-    
+            };
+        }
+    }   
 }

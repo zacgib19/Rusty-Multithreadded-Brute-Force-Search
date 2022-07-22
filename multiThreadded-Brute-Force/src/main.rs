@@ -1,7 +1,7 @@
  // Find library for keeping time for measuring how long it takes to crack
 use std::io;
 use unicode_segmentation::UnicodeSegmentation;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 mod bruteForceClass;
 
 fn main() {
@@ -9,7 +9,6 @@ fn main() {
     let mut password = String::new();
     let mut complexityChoice: char;
     let mut hasGuessedCorrect: bool = false;
-    let mut numGuesses: u32 = 0;
     let mut wantToCrack: bool = true;
 
     //Welcome message
@@ -51,6 +50,14 @@ fn main() {
             break;
         }
 
+        //DEBUGGING CHAR UNICODE-CODEPOINT stuff
+        let mut userChar = 'Ö';
+        let mut userInt = userChar as u32;
+        println!("\n\n{}", userInt);
+        userInt -= 5;
+        userChar = char::from_u32(userInt).unwrap();
+        println!("{}", userChar);
+
         // Asks for password
         // Ask again if string is too long
         loop {
@@ -69,8 +76,7 @@ fn main() {
             if numOfChar as i8 > maxLength {
                 println!("\nPassword too long!");
                 continue;
-            }
-            else {
+            } else {
                 password = passInput;
                 break;
             }
@@ -102,9 +108,7 @@ fn main() {
             if numOfChar == 0 {
                 println!("Invalid Entry! (didn't enter anything)");
                 continue;
-            }
-
-            else {
+            } else {
                 // Converts to string slice, then trims the trailing newline
                 let mut complexityInput: &str = &complexityInput[..];
                 complexityInput = complexityInput.trim();
@@ -136,17 +140,11 @@ fn main() {
 
         if BFS.isFound {
             println!("Password found! Your password was: {}", BFS.passGuess);
-            println!("It took {} tries to guess, and {} number of seconds to crack!", BFS.numGuesses, timeElapsed);
-        }
-
-        else {
+            println!("It took {} tries to guess, and {} milliseconds to crack!", BFS.numGuesses, timeElapsed);
+        } else {
             println!("Despite {} guesses, your password couldn't be cracked. Great work!", BFS.numGuesses);
         }
 
-
-        // Debugging
-        // BFS.debugging();
-        
 
         // Asks user if they want to continue 
         // Asks again if responce is not Yes or no

@@ -1,4 +1,5 @@
 use unicode_segmentation::UnicodeSegmentation;
+use std::char;
 use std::collections::HashMap;
 
 
@@ -41,6 +42,8 @@ impl BFSearch {
 
             // Extended
             'E'|'e' => {
+
+                //Takes two bytes to store these
                 let extendedCharList = vec![
                     '☺', '☻', '♥', '♦', '♣', '♠', '•', '◘', '○', '◙', '♂',
                     '♀', '♪', '♫', '☼', '►', '◄', '↕', '‼', '¶', '§', '▬',
@@ -66,7 +69,7 @@ impl BFSearch {
                     'ã', 'å', 'æ', 'ç', 'í', 'î', 'ï',
                     'ð', 'õ', '÷', 'ø', 'ü', 'ý', 'þ', 'ÿ'
                 ];
-
+                
                 for ch in ' '..='~' {
                     tempCharList.push(ch);
                 }
@@ -113,7 +116,7 @@ impl BFSearch {
             numGuesses: 0,
             currentIndex: 0,
             firstChar: tempFChar,
-            lastChar: String::from(tempLChar),  //Variable used for many comparisons, needs to be string
+            lastChar: String::from(tempLChar),  
             isFound: false,
         }
     }
@@ -141,9 +144,8 @@ impl BFSearch {
 
             self.numGuesses += 1;
             //Debugging
-            // print!("{}, ", self.passGuess);
-        }
-        
+            println!("{},", self.passGuess.chars().count());
+        }    
     }
 
     // Sets lastGuess to maxLength copies of the last character in charFromIntMap
@@ -162,7 +164,8 @@ impl BFSearch {
     // Check to see if search needs to end
     fn isLastGuess(&self) -> bool {
         self.passGuess == self.lastGuess
-    }  
+    }
+    
 
     // Updates passGuess in binary search fashion
     fn str_next(&mut self) -> String {
@@ -177,26 +180,36 @@ impl BFSearch {
         // For every other guess
         else {
             // New instance of this supposed to run each recursion of str_next()
-            let mut currCharMapIndex = *self.intFromCharMap.get(self.passGuess
-                                                .graphemes(true)
-                                                .nth(self.currentIndex)
-                                                .unwrap()    //<- Unwraps option<str> to str                                               
-                                                ).unwrap();  //<- Unwraps option<i32> to i32
+            //BUG: Extended and Full search crash here at last character
 
+            // USE UNICODE CODEPOINT TO GET NEXT CHARACTER
                         
             // If char at index is not the last character in self.charFromIntMap
             if self.passGuess.graphemes(true).nth(self.currentIndex).unwrap() != self.lastChar {
+                let mut tempChar = self.passGuess.chars().nth(self.currentIndex).unwrap() as char;
 
-                currCharMapIndex += 1;
-                // Change passGuess' character at currentIndex position
-                self.passGuess.remove(self.currentIndex);
-                self.passGuess.insert_str(self.currentIndex, &*self.charFromIntMap.get(&currCharMapIndex).unwrap());
-                
+                let mut tempInt = tempChar as u32;
+
+                // Skip compiler checks for valid unicode characters
+                unsafe {
+                    tempInt += 1;
+                    
+                    // Change passGuess' character at currentIndex position
+                    self.passGuess.remove(self.currentIndex);
+                    self.passGuess.insert(self.currentIndex, char::from_u32(tempInt).unwrap());
+                    
+                }
+                //println!("{}", self.passGuess);
                 return self.passGuess.clone();
             }
 
             // If char at index is last 
-            else {                   
+            else {   
+                
+                //DEBUGGING
+                //println!("Only character in passGuess? {}", self.passGuess.graphemes(true).count() == 1);
+                //println!("Is it time to add letter? {}", self.passGuess.graphemes(true).count() == (self.currentIndex + 1));
+
                 // If only character in self.passGuess
                 if self.passGuess.graphemes(true).count() == 1 {
                     
@@ -207,7 +220,7 @@ impl BFSearch {
                     self.passGuess.push(self.firstChar);
 
                     // Reset currCharMapIndex
-                    currCharMapIndex = 0;
+                    let currCharMapIndex = 0;
                     return self.passGuess.clone();
                 }
 

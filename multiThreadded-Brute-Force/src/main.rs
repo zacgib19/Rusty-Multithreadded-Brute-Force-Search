@@ -2,33 +2,33 @@
 use std::io;
 use unicode_segmentation::UnicodeSegmentation;
 use std::time::Instant;
-mod bruteForceClass;
+mod brute_force_class;
 
 fn main() {
-    let mut maxLength: i8 = 0;
+    let mut max_length: i8;
     let mut password = String::new();
-    let mut complexityChoice: char;
-    let mut hasGuessedCorrect: bool = false;
-    let mut wantToCrack: bool = true;
+    let mut complexity_choice: char;
+    let mut has_guessed_correct: bool = false;
+    let mut want_to_crack: bool = true;
 
     //Welcome message
     println!("\n\n\nHello! Welcome to this brute force program!\
     \nHere, you will be prompted for a password, and the computer will\
     attempt to brute force guess the password.");
 
-    while wantToCrack {
+    while want_to_crack {
         
-        // Prompt for maxLength
+        // Prompt for max_length
         // Ask again if not an integer
         // Ask again if less than 1 but bigger than 7
         loop {           
             println!("Please enter the maximum length of password you want to guess (greater than 0, less than 10): ");
-            let mut maxLenInput = String::new();
+            let mut max_len_input = String::new();
 
-            io::stdin().read_line(&mut maxLenInput).expect("Failed to read line");
+            io::stdin().read_line(&mut max_len_input).expect("Failed to read line");
 
             // Checks if entered string is number
-            let mut maxLenInput: i8 = match maxLenInput.trim().parse() {
+            let mut max_len_input: i8 = match max_len_input.trim().parse() {
                 Ok(num) => num,
 
                 Err(_) => {
@@ -37,47 +37,39 @@ fn main() {
                 },
             };
             
-            if maxLenInput <= 0 {
+            if max_len_input <= 0 {
                 println!("\nNumber too small!");
                 continue;
             }
-            else if maxLenInput > 10 {
+            else if max_len_input > 10 {
                 println!("\nNumber too big, it will take too long to brute force!");
                 continue;
             }
-            maxLength = maxLenInput;
+            max_length = max_len_input;
 
             break;
         }
 
-        //DEBUGGING CHAR UNICODE-CODEPOINT stuff
-        let mut userChar = 'Ö';
-        let mut userInt = userChar as u32;
-        println!("\n\n{}", userInt);
-        userInt -= 5;
-        userChar = char::from_u32(userInt).unwrap();
-        println!("{}", userChar);
-
         // Asks for password
         // Ask again if string is too long
         loop {
-            let mut passInput = String::new();
+            let mut pass_input = String::new();
             
             println!("\nPlease enter a password to guess: ");
-            io::stdin().read_line(&mut passInput).expect("Failed to read line");
+            io::stdin().read_line(&mut pass_input).expect("Failed to read line");
             
-            let mut numOfChar: i8 = passInput.trim().graphemes(true).count() as i8;
+            let mut num_of_char: i8 = pass_input.trim().graphemes(true).count() as i8;
 
             // Handles bug where last char is a space
-            if passInput.chars().last().unwrap() == ' ' {
-                numOfChar -= 1;
+            if pass_input.chars().last().unwrap() == ' ' {
+                num_of_char -= 1;
             }
 
-            if numOfChar as i8 > maxLength {
+            if num_of_char as i8 > max_length {
                 println!("\nPassword too long!");
                 continue;
             } else {
-                password = passInput;
+                password = pass_input;
                 break;
             }
         }
@@ -99,24 +91,23 @@ fn main() {
         // Asks again if not a char
         // Asks again if not correct character
         loop {
-            let mut complexityInput = String::new();
+            let mut complexity_input = String::new();
             println!("Please enter either B for Basic, E for Extended, or F for full.");
-            io::stdin().read_line(&mut complexityInput).expect("Failed to read line");
+            io::stdin().read_line(&mut complexity_input).expect("Failed to read line");
 
-            let mut numOfChar: i8 = complexityInput.trim().graphemes(true).count() as i8;
+            let num_of_char: i8 = complexity_input.trim().graphemes(true).count() as i8;
         
-            if numOfChar == 0 {
+            if num_of_char == 0 {
                 println!("Invalid Entry! (didn't enter anything)");
                 continue;
             } else {
                 // Converts to string slice, then trims the trailing newline
-                let mut complexityInput: &str = &complexityInput[..];
-                complexityInput = complexityInput.trim();
+                let mut complexity_input: &str = &complexity_input[..];
+                complexity_input = complexity_input.trim();
 
-                match complexityInput {
-                    "B"|"b"|"Basic"|"basic"|"BASIC" => complexityChoice = 'B',
-                    "E"|"e"|"Extended"|"extended"|"EXTENDED" => complexityChoice = 'E',
-                    "F"|"f"|"Full"|"full"|"FULL" => complexityChoice = 'F',
+                match complexity_input {
+                    "B"|"b"|"Basic"|"basic"|"BASIC" => complexity_choice = 'B',
+                    "F"|"f"|"Full"|"full"|"FULL" => complexity_choice = 'F',
                     _=> {
                         println!("\nInvalid entry! (not right character)");
                         continue;
@@ -129,38 +120,44 @@ fn main() {
         println!("\nStarting normal brute force cracking. NOTE, this may take a while!");
 
         // CALL BFSEARCH STRUCT instance HERE      
-        let mut BFS = bruteForceClass::BFSearch::new(maxLength, password, complexityChoice);
+        let mut BFS = brute_force_class::BFSearch::new(max_length, password, complexity_choice);
 
-        let startTime = Instant::now();
-        BFS.startSearch();
-        let stopTime = Instant::now();
+        let start_time = Instant::now();
+        BFS.start_search();
+        let stop_time = Instant::now();
 
-        let timeElapsed = stopTime - startTime;
-        let timeElapsed = timeElapsed.as_millis();
+        let time_elapsed = stop_time - start_time;
+        let time_elapsed = time_elapsed.as_millis();
 
-        if BFS.isFound {
-            println!("Password found! Your password was: {}", BFS.passGuess);
-            println!("It took {} tries to guess, and {} milliseconds to crack!", BFS.numGuesses, timeElapsed);
+
+        has_guessed_correct = BFS.is_found;
+
+        //This line will be used when multithreadded is done
+        //has_guessed_correct = (BFS.isFound || MTBFS.isFound);
+
+        if has_guessed_correct {
+            println!("Password found! Your password was: {}", BFS.pass_guess);
+            println!("It took {} tries to guess, and {} milliseconds to crack!", BFS.num_guesses, time_elapsed);
         } else {
-            println!("Despite {} guesses, your password couldn't be cracked. Great work!", BFS.numGuesses);
+            println!("Despite {} guesses, your password couldn't be cracked. Great work!", BFS.num_guesses);
         }
 
 
         // Asks user if they want to continue 
         // Asks again if responce is not Yes or no
-        // Convert to boolean for wantToCrack
+        // Convert to boolean for want_to_crack
         loop {
-            let mut wantCrackInput = String::new();
+            let mut want_crack_input = String::new();
             println!("Do you wanna crack another password?");
-            io::stdin().read_line(&mut wantCrackInput).expect("Failed to read line");
+            io::stdin().read_line(&mut want_crack_input).expect("Failed to read line");
 
             // Converts to string slice, then trims the trailing newline
-            let mut wantCrackInput: &str = &wantCrackInput[..];
-            wantCrackInput = wantCrackInput.trim();
+            let mut want_crack_input: &str = &want_crack_input[..];
+            want_crack_input = want_crack_input.trim();
 
-            match wantCrackInput {
-                "Yes"|"yes"|"Y"|"y"|"YES" => wantToCrack = true,
-                "No"|"no"|"N"|"n"|"NO" => wantToCrack = false,
+            match want_crack_input {
+                "Yes"|"yes"|"Y"|"y"|"YES" => want_to_crack = true,
+                "No"|"no"|"N"|"n"|"NO" => want_to_crack = false,
                 _ => {
                     println!("\nInvalid entry!");
                     continue;

@@ -120,7 +120,7 @@ fn main() {
         println!("\nStarting normal brute force cracking. NOTE, this may take a while!");
 
         // CALL BFSEARCH STRUCT instance HERE      
-        let mut BFS = brute_force_class::BFSearch::new(max_length, password, complexity_choice);
+        let mut BFS = brute_force_class::BFSearch::new(max_length, &password, complexity_choice);
 
         let start_time = Instant::now();
         BFS.start_search();

@@ -136,7 +136,7 @@ fn main() {
         //has_guessed_correct = (BFS.isFound || MTBFS.isFound);
 
         if has_guessed_correct {
-            println!("Password found! Your password was: {}", BFS.pass_guess);
+            println!("Password found! Your password was: {:?}", BFS.pass_guess);
             println!("It took {} tries to guess, and {} milliseconds to crack!", BFS.num_guesses, time_elapsed);
         } else {
             println!("Despite {} guesses, your password couldn't be cracked. Great work!", BFS.num_guesses);

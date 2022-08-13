@@ -6,14 +6,13 @@ use std::collections::HashMap;
 // Seen as class variables
 pub struct BFSearch {
     max_length: i8,
-    real_password: String,      //Immutable string slice
-    pub pass_guess: String,
-    last_guess: String,
+    real_password: Vec::<char>,
+    pub pass_guess: Vec::<char>,
+    last_guess: Vec::<char>,
     char_from_int_map: HashMap<i32, String>,
     int_from_char_map: HashMap<String, i32>,
     pub num_guesses: u128,
-    curr_grapheme_index: usize,       //Index for string array in binary search algorithm (in graphemes)
-    curr_byte_index: usize,      //Index for string array in binary search algorithm (in bytes)
+    curr_index: usize,       //Index for string array in binary search algorithm (in graphemes)
     first_char: char,           
     last_char: char,
     pub is_found: bool,
@@ -23,7 +22,7 @@ pub struct BFSearch {
 impl BFSearch {
 
     // Constructor that implements default variables
-    pub fn new(max_length: i8, real_password: String, search_complexity: char) -> Self {
+    pub fn new(max_length: i8, password: String, search_complexity: char) -> Self {
         let mut temp_char_map = HashMap::new();
         let mut temp_int_map = HashMap::new();
         let mut temp_char_list: Vec<char> = Vec::new(); //Temporary char array used for char_from_int_map
@@ -65,18 +64,19 @@ impl BFSearch {
         // Gets first and last character
         temp_f_char = temp_char_list[0];
         temp_L_char = temp_char_list[temp_char_list.len()-1];
+
+
         
         // Initalizes and returns BFsearch Struct (no semicolon)
         Self {
             max_length,
-            real_password,
-            pass_guess: String::new(),
-            last_guess: String::new(),
+            real_password: password.chars().collect::<Vec<char>>(),
+            pass_guess: Vec::new(),
+            last_guess: Vec::new(),
             char_from_int_map: temp_char_map,
             int_from_char_map: temp_int_map,
             num_guesses: 0,
-            curr_grapheme_index: 0,
-            curr_byte_index: 0,
+            curr_index: 0,
             first_char: temp_f_char,
             last_char: temp_L_char,  
             is_found: false,
@@ -88,10 +88,11 @@ impl BFSearch {
     pub fn start_search (&mut self) {   
         self.get_last_guess();
         
-        while !(self.is_last_guess() && self.is_pw_match()) {
-            
+        while true {
+            //println!("{:?}", self.pass_guess);
             if self.is_pw_match() {
-                self.is_found = true;
+                self.is_found = true; 
+                
                 break;
             }
 
@@ -100,9 +101,8 @@ impl BFSearch {
             }
 
             else {
-                self.curr_grapheme_index = 0;
-                self.curr_byte_index = 0;
-                println!("{}", self.pass_guess);
+                self.curr_index = 0;
+                
                 self.pass_guess = self.str_next();
                 self.num_guesses += 1;
             }            
@@ -129,10 +129,10 @@ impl BFSearch {
     
 
     // Updates pass_guess in binary search fashion
-    fn str_next(&mut self) -> String {
+    fn str_next(&mut self) -> Vec<char> {
 
         // For very first guess
-        if self.num_guesses == 0 {
+        if self.pass_guess.len() == 0 {
             // Add first character
             self.pass_guess.push(self.first_char);
             return self.pass_guess.clone();
@@ -146,27 +146,27 @@ impl BFSearch {
             // USE UNICODE CODEPOINT TO GET NEXT CHARACTER
 
             // If char at index is not the last character in self.char_from_int_map
-            if self.pass_guess.chars().nth(self.curr_grapheme_index).unwrap() != self.last_char {
+            if self.pass_guess[self.curr_index] != self.last_char {
 
-                let temp_char = self.pass_guess.chars().nth(self.curr_grapheme_index).unwrap(); //Cant use grapheme library, returns &str, not char  
+                let mut temp_char = self.pass_guess[self.curr_index]; //Cant use grapheme library, returns &str, not char  
                 let mut temp_int = temp_char as u32;
 
                 temp_int += 1;
                 
-                // Change pass_guess' character at curr_byte_index position
-                self.pass_guess.remove(self.curr_byte_index);
+                // Change pass_guess' character at curr_index position
+                self.pass_guess.remove(self.curr_index);
                 
-                self.pass_guess.insert(self.curr_byte_index, char::from_u32(temp_int).unwrap());
+                self.pass_guess.insert(self.curr_index, char::from_u32(temp_int).unwrap());
                 
                 return self.pass_guess.clone();
             }
 
             // If char at index is last 
             else {   
-                println!(", Selected char: {:?}", self.pass_guess.graphemes(true).nth(self.curr_grapheme_index).unwrap());
+                //println!(", Selected char: {:?}", self.pass_guess.graphemes(true).nth(self.curr_index).unwrap());
 
                 // If only character in self.pass_guess
-                if self.pass_guess.graphemes(true).count() == 1 {
+                if self.pass_guess.len() == 1 {
                     
                     // Reset first character
                     self.pass_guess.remove(0);
@@ -178,11 +178,11 @@ impl BFSearch {
 
 
                 // Else if time to add another letter
-                else if self.pass_guess.graphemes(true).count() == (self.curr_grapheme_index + 1) {
+                else if self.pass_guess.len() == (self.curr_index + 1) {
                     
                     // Replace character at index with first character of char_from_int_map
-                    self.pass_guess.remove(self.curr_byte_index);
-                    self.pass_guess.insert(self.curr_byte_index, self.first_char);
+                    self.pass_guess.remove(self.curr_index);
+                    self.pass_guess.insert(self.curr_index, self.first_char);
                     // Append first character of char_from_int_map to pass_guess
                     self.pass_guess.push(self.first_char);
 
@@ -198,18 +198,16 @@ impl BFSearch {
                 else {
                     
                     //Increment currIndexes
-                    self.curr_grapheme_index += 1;
-                    self.curr_byte_index += (self.pass_guess.chars().nth(self.curr_grapheme_index).unwrap().len_utf8());
+                    self.curr_index += 1;
                     
                     let mut return_string = self.str_next();
-                    //Decrement currIndexes
-                    self.curr_grapheme_index -= 1;
-                    self.curr_byte_index -= (self.pass_guess.chars().nth(self.curr_grapheme_index).unwrap().len_utf8());
                     
-                      
-                    // Replace character at curr_grapheme_index with first char
-                    return_string.remove(self.curr_byte_index);
-                    return_string.insert(self.curr_byte_index, self.first_char);
+                    //Decrement currIndexes
+                    self.curr_index -= 1;
+  
+                    // Replace character at curr_index with first char
+                    return_string.remove(self.curr_index);
+                    return_string.insert(self.curr_index, self.first_char);
 
                     return return_string;
                 }

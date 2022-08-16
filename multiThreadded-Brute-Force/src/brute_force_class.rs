@@ -43,8 +43,8 @@ impl BFSearch {
 
             // Full Unicode Library
             'F'|'f' => {
-                // From null character throughout the entire unicode library
-                for ch in ''..='𫠝' {
+                // From space character throughout the entire unicode library
+                for ch in ' '..='𫠝' {
                     temp_char_list.push(ch);
                 }
             }
@@ -93,18 +93,12 @@ impl BFSearch {
         self.get_last_guess();
         
         loop {
-            //println!("{:?}", self.pass_guess_char_arr);
             if self.is_pw_match() {
-                self.is_found = true; 
-                
+                self.is_found = true;   
                 break;
-            }
-
-            else if self.is_last_guess() {
+            } else if self.is_last_guess() {
                 break;
-            }
-
-            else {
+            } else {
                 self.curr_index = 0;
                 
                 self.pass_guess_char_arr = self.str_next();
@@ -167,7 +161,7 @@ impl BFSearch {
                 // Change pass_guess_char_arr' character at curr_index position
                 self.pass_guess_char_arr.remove(self.curr_index);
                 
-                self.pass_guess_char_arr.insert(self.curr_index, char::from_u32(temp_int).unwrap());
+                self.pass_guess_char_arr.insert(self.curr_index, char::from_u32(temp_int).unwrap_or('�'));
                 
                 return self.pass_guess_char_arr.clone();
             }

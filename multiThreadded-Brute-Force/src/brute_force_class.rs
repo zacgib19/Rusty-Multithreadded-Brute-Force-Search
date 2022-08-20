@@ -11,8 +11,6 @@ pub struct BFSearch {
     pub pass_guess: String,
     pass_guess_char_arr: Vec::<char>,
     last_guess: Vec::<char>,
-    char_from_int_map: HashMap<i32, String>,
-    int_from_char_map: HashMap<String, i32>,
     pub num_guesses: u128,
     curr_index: usize,       //Index for string array in binary search algorithm (in graphemes)
     first_char: char,           
@@ -25,8 +23,6 @@ impl BFSearch {
 
     // Constructor that implements default variables
     pub fn new(max_length: i8, input_password: &str, search_complexity: char) -> Self {
-        let mut temp_char_map = HashMap::new();
-        let mut temp_int_map = HashMap::new();
         let mut temp_char_list: Vec<char> = Vec::new(); //Temporary char array used for char_from_int_map
         let mut temp_f_char: char = ' '; //Temporary character used for first_char
         let mut temp_L_char: char = ' '; //Temporary character used for last_char
@@ -55,13 +51,7 @@ impl BFSearch {
             }
 
         }
-
-        // Convert vector to hashmap
-        for i in 0..temp_char_list.len() {
-            temp_char_map.insert(i as i32, String::from(temp_char_list[i]));  //used for charToInt
-            temp_int_map.insert(String::from(temp_char_list[i]), i as i32);   //used for intToChar
-        } 
-       
+    
 
         // Gets first and last character
         temp_f_char = temp_char_list[0];
@@ -77,8 +67,6 @@ impl BFSearch {
             pass_guess: String::new(),
             pass_guess_char_arr: Vec::new(),
             last_guess: Vec::new(),
-            char_from_int_map: temp_char_map,
-            int_from_char_map: temp_int_map,
             num_guesses: 0,
             curr_index: 0,
             first_char: temp_f_char,

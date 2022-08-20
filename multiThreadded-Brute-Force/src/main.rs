@@ -3,6 +3,7 @@ use std::io;
 use unicode_segmentation::UnicodeSegmentation;
 use std::time::Instant;
 mod brute_force_class;
+mod multithreaddedBFC;
 
 fn main() {
     let mut max_length: i8;
@@ -119,27 +120,36 @@ fn main() {
 
         println!("\nStarting normal brute force cracking. NOTE, this may take a while!");
 
-        // CALL BFSEARCH STRUCT instance HERE      
+        // CALL BFSEARCH STRUCT instance HERE  
+        /*    
         let mut BFS = brute_force_class::BFSearch::new(max_length, &password, complexity_choice);
 
-        let start_time = Instant::now();
+        let start_BF_time = Instant::now();
         BFS.start_search();
-        let stop_time = Instant::now();
+        let stop_BF_time = Instant::now();
 
-        let time_elapsed = stop_time - start_time;
-        let time_elapsed = time_elapsed.as_millis();
+        let BF_time_elapsed = stop_BF_time - start_BF_time;
+        let BF_time_elapsed = BF_time_elapsed.as_millis();
+        let has_BF_guessed_correct = BFS.is_found;
+        */
+        let mut MTBFS = multithreaddedBFC::MTBFSearch::new(max_length, &password, complexity_choice);
 
+        let start_MTBF_time = Instant::now();
+        MTBFS.start_search();
+        let stop_MTBF_time = Instant::now();
 
-        has_guessed_correct = BFS.is_found;
+        let MTBF_time_elapsed = stop_MTBF_time - start_MTBF_time;
+        let MTBF_time_elapsed = MTBF_time_elapsed.as_millis();
+        let has_MTBF_guessed_correct = MTBFS.is_found;
 
         //This line will be used when multithreadded is done
         //has_guessed_correct = (BFS.isFound || MTBFS.isFound);
 
-        if has_guessed_correct {
-            println!("Password found! Your password was: {:?}", BFS.pass_guess);
-            println!("It took {} tries to guess, and {} milliseconds to crack!", BFS.num_guesses, time_elapsed);
+        if has_MTBF_guessed_correct {
+            println!("Password found! Your password was: {:?}", MTBFS.pass_guess);
+            println!("It took {} tries to guess, and {:?} milliseconds to crack!", MTBFS.num_guesses, MTBF_time_elapsed);
         } else {
-            println!("Despite {} guesses, your password couldn't be cracked. Great work!", BFS.num_guesses);
+            println!("Despite {} guesses, your password couldn't be cracked. Great work!", MTBFS.num_guesses);
         }
 
 

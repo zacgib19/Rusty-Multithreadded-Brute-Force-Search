@@ -1,12 +1,10 @@
-use unicode_segmentation::UnicodeSegmentation;
+//use unicode_segmentation::UnicodeSegmentation;
 use std::char;
-use std::collections::HashMap;
-use arr_macro::arr;
 extern crate num_cpus;
 
 // Seen as class variables
 pub struct MTBFSearch {
-    max_length: i8,
+    max_length: u128,
     
     real_password: String,
     real_password_char_arr: Vec::<char>,
@@ -58,35 +56,69 @@ impl MTBFSearch {
             }
         }      
 
+        let max_length = max_length as u128;
+
         // Gets first and last character
         temp_f_char = temp_char_list[0];
         temp_L_char = temp_char_list[temp_char_list.len()-1];
 
-        // Figure out max amount
+        // Calculate max amount of guesses
         let mut max_guess: u128 = 0;
         let mut num_chars: u128 = temp_char_list.len() as u128;
- 
-        // Calculate max amount of guesses
         for len_index in 1..=max_length {
             max_guess += u128::pow(num_chars, len_index as u32);
         }
 
         // Get number of threads
-        let num_threads: i8 = num_cpus::get_physical() as i8;
+        let num_threads: u128 = num_cpus::get_physical() as u128;
 
-        // Create of pass_guesses
-        let vec_of_pass_guesses: Vec<String> = vec![String::new()]; // SHOULD BE VEC<CHAR> INSTEAD OF STRING
+        // Set up vec of vecs for passguess
+        let mut vec_of_pass_guesses: Vec<Vec<char>> = Vec::new(); // Vec<char> is faster than strings
+        for i in 0..num_threads {
+            let vch: Vec<char> = vec!();
+            vec_of_pass_guesses.push(vch);
+        }
 
-        let mut ranges: Vec<i32> = Vec::new();
+        // Converts specific guess to starting password for thread
+        fn guess_to_str(guess_num: u128, base: u128) -> Vec<char> {
+            let mut list_of_remainders: Vec::<u128> = vec!();
+            let mut dividend = guess_num;
+
+            // Converts to base n from base 10, where n is amount of possible characters
+            // Another way to conceptually think about passwords
+            while dividend > 0 {
+                list_of_remainders.push(dividend % base);
+                print!("{:?}", list_of_remainders);
+                print!(", Dividend: {:?}", dividend);
+                dividend = dividend / base;
+                println!(", to {:?}", dividend);
+            }
+
+            // Convert remainders to characters
+            let mut vec_char: Vec<char> = Vec::new();
+            for i in list_of_remainders {
+                //let mut ch = temp_char_list[i];
+                //Valid unicode starts at ' ', which is 32nd codepoint
+                vec_char.push(char::from_u32((i+31) as u32).unwrap_or('�')); 
+            }
+            
+            return vec_char;
+        }
+
         let quotient = max_length / num_threads; //Integer division
         let remainder = max_length % num_threads;
 
-        // Get ranges of guesses
-        for i in 0..num_threads {
-            //let ran_tup = (in);
-        }
-        
-        // Initalizes and returns BFsearch Struct (no semicolon)
+        //DEBUGGING
+        // Guess 18242 should return "!!!" as char array on basic -- DONE
+        // Guess 335876 should return "!!" as char array on full
+        let test = guess_to_str(335876, num_chars);
+        println!("{:?}", test);
+
+        /*for i in num_threads {
+            guess_to_str(, num_chars);
+        }*/
+
+        // Initalizes and returns MTBFsearch Struct (no semicolon)
         Self {
             max_length,
 
@@ -107,7 +139,7 @@ impl MTBFSearch {
             is_found: false,
         }
     }
-   
+    
     // Master Controller over threads, initiallizes search
     pub fn start_search (&mut self) {
         
@@ -125,9 +157,9 @@ impl MTBFSearch {
                 break;
             } else {
                 self.curr_index = 0;
-                
-                self.pass_guess_char_arr = self.str_next();
                 self.num_guesses += 1;
+                self.pass_guess_char_arr = self.str_next();
+                
             }            
         }
         

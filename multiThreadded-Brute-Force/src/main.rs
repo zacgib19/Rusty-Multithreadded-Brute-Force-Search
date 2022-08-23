@@ -82,8 +82,6 @@ fn main() {
         println!("\nHow in-depth would you like this search to go?\
                  \nBasic: Only searches through the ASCII-code characters\
                  \n(Faster, but will miss passwords with ALT-Code characters. Examples: Ö, ÿ, ☺)\n\
-                 \nExtended: Will search through every one of the ALT-code characters\
-                 \n(Slower, but will check every typable password)\n\
                  \nFull: Will search through EVERY character in the entire Unicode Library.\
                  \n(VERY Slow, but covers ALT-Code characters, and characters from every typable language\n");
         
@@ -92,7 +90,7 @@ fn main() {
         // Asks again if not correct character
         loop {
             let mut complexity_input = String::new();
-            println!("Please enter either B for Basic, E for Extended, or F for full.");
+            println!("Please enter either B for Basic, or F for full.");
             io::stdin().read_line(&mut complexity_input).expect("Failed to read line");
 
             let num_of_char: i8 = complexity_input.trim().graphemes(true).count() as i8;

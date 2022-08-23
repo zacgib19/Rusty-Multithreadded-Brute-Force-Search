@@ -1,7 +1,5 @@
 use unicode_segmentation::UnicodeSegmentation;
 use std::char;
-use std::collections::HashMap;
-
 
 // Seen as class variables
 pub struct BFSearch {

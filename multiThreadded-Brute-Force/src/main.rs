@@ -1,4 +1,3 @@
- // Find library for keeping time for measuring how long it takes to crack
 use std::io;
 use unicode_segmentation::UnicodeSegmentation;
 use std::time::Instant;
@@ -132,10 +131,11 @@ fn main() {
         let BF_time_elapsed = BF_time_elapsed.as_millis();
         let has_BF_guessed_correct = BFS.is_found;
         */
+        
         let mut MTBFS = multithreaddedBFC::MTBFSearch::new(max_length, &password, complexity_choice);
 
         let start_MTBF_time = Instant::now();
-        MTBFS.start_search();
+        MTBFS.single_thread_search();
         let stop_MTBF_time = Instant::now();
 
         let MTBF_time_elapsed = stop_MTBF_time - start_MTBF_time;

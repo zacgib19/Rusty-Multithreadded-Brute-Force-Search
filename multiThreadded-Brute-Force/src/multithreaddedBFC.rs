@@ -1,21 +1,27 @@
 use unicode_segmentation::UnicodeSegmentation;
 use std::char;
 use std::collections::HashMap;
-use num_cpus;
+use arr_macro::arr;
+extern crate num_cpus;
 
 // Seen as class variables
 pub struct MTBFSearch {
     max_length: i8,
+    
     real_password: String,
     real_password_char_arr: Vec::<char>,
+
     pub pass_guess: String,
     pass_guess_char_arr: Vec::<char>,
-    last_guess: Vec::<char>,
+
     max_num_guesses: u128,
     pub num_guesses: u128,
+
     curr_index: usize,       //Index for string array in binary search algorithm (in graphemes)
     first_char: char,           
     last_char: char,
+    last_guess: Vec::<char>,
+
     pub is_found: bool,
 }
 
@@ -60,31 +66,55 @@ impl MTBFSearch {
         let mut max_guess: u128 = 0;
         let mut num_chars: u128 = temp_char_list.len() as u128;
  
-        for len_index in (1..=max_length) {
+        // Calculate max amount of guesses
+        for len_index in 1..=max_length {
             max_guess += u128::pow(num_chars, len_index as u32);
+        }
+
+        // Get number of threads
+        let num_threads: i8 = num_cpus::get_physical() as i8;
+
+        // Create of pass_guesses
+        let vec_of_pass_guesses: Vec<String> = vec![String::new()]; // SHOULD BE VEC<CHAR> INSTEAD OF STRING
+
+        let mut ranges: Vec<i32> = Vec::new();
+        let quotient = max_length / num_threads; //Integer division
+        let remainder = max_length % num_threads;
+
+        // Get ranges of guesses
+        for i in 0..num_threads {
+            //let ran_tup = (in);
         }
         
         // Initalizes and returns BFsearch Struct (no semicolon)
         Self {
             max_length,
+
             real_password: String::from(input_password),
             real_password_char_arr: input_password.chars().collect::<Vec<char>>(),
+
             pass_guess: String::new(),
             pass_guess_char_arr: Vec::new(),
-            last_guess: Vec::new(),
+                
             max_num_guesses: max_guess,
             num_guesses: 0,
+
             curr_index: 0,
             first_char: temp_f_char,
-            last_char: temp_L_char,  
+            last_char: temp_L_char,
+            last_guess: Vec::new(),
+
             is_found: false,
         }
     }
-
-    
    
+    // Master Controller over threads, initiallizes search
+    pub fn start_search (&mut self) {
+        
+    }
+
     // Starts brute force search
-    pub fn start_search (&mut self) {   
+    pub fn single_thread_search (&mut self) {   
         self.get_last_guess();
         
         loop {
@@ -119,7 +149,7 @@ impl MTBFSearch {
 
     // Check to see if search needs to end
     fn is_last_guess(&self) -> bool {
-        self.pass_guess_char_arr == self.last_guess
+        self.num_guesses == self.max_num_guesses
     }
     
     fn cleanup_to_string(&mut self) {
@@ -137,14 +167,9 @@ impl MTBFSearch {
             self.pass_guess_char_arr.push(self.first_char);
             return self.pass_guess_char_arr.clone();
         }
-
-        
+       
         // For every other guess
         else {
-            // New instance of this supposed to run each recursion of str_next()
-
-            // USE UNICODE CODEPOINT TO GET NEXT CHARACTER
-
             // If char at index is not the last character in self.char_from_int_map
             if self.pass_guess_char_arr[self.curr_index] != self.last_char {
 
@@ -156,18 +181,15 @@ impl MTBFSearch {
                 // Change pass_guess_char_arr' character at curr_index position
                 self.pass_guess_char_arr.remove(self.curr_index);
                 
-                self.pass_guess_char_arr.insert(self.curr_index, char::from_u32(temp_int).unwrap_or('�'));
+                self.pass_guess_char_arr.insert(self.curr_index, char::from_u32(temp_int).unwrap_or('�')); // Inserts '�' if invalid unicode codepoint
                 
                 return self.pass_guess_char_arr.clone();
             }
 
             // If char at index is last 
-            else {   
-                //println!(", Selected char: {:?}", self.pass_guess_char_arr.graphemes(true).nth(self.curr_index).unwrap());
-
+            else {
                 // If only character in self.pass_guess_char_arr
                 if self.pass_guess_char_arr.len() == 1 {
-                    
                     // Reset first character
                     self.pass_guess_char_arr.remove(0);
                     self.pass_guess_char_arr.insert(0, self.first_char);
@@ -179,7 +201,6 @@ impl MTBFSearch {
 
                 // Else if time to add another letter
                 else if self.pass_guess_char_arr.len() == (self.curr_index + 1) {
-                    
                     // Replace character at index with first character of char_from_int_map
                     self.pass_guess_char_arr.remove(self.curr_index);
                     self.pass_guess_char_arr.insert(self.curr_index, self.first_char);
@@ -196,7 +217,6 @@ impl MTBFSearch {
                 }
 
                 else {
-                    
                     //Increment currIndexes
                     self.curr_index += 1;
                     

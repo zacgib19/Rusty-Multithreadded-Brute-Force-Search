@@ -1,4 +1,3 @@
-use unicode_segmentation::UnicodeSegmentation;
 use std::char;
 
 // Seen as class variables

@@ -1,10 +1,14 @@
-//use unicode_segmentation::UnicodeSegmentation;
 use std::char;
+use std::collections::HashMap;
 extern crate num_cpus;
 
 // Seen as class variables
 pub struct MTBFSearch {
     max_length: u128,
+
+    //list_of_char_options: Vec::<char>,
+    char_to_int_map: HashMap::<char, usize>,
+    int_to_char_map: HashMap::<usize, char>,
     
     real_password: String,
     real_password_char_arr: Vec::<char>,
@@ -28,7 +32,9 @@ impl MTBFSearch {
 
     // Constructor that implements default variables
     pub fn new(max_length: i8, input_password: &str, search_complexity: char) -> Self {
-        let mut temp_char_list: Vec<char> = Vec::new(); //Temporary char array used for char_from_int_map
+        let mut temp_char_list: Vec<char> = Vec::new(); //Temporary char array used
+        let mut char_to_int_map: HashMap<char, usize> = HashMap::new();
+        let mut int_to_char_map: HashMap<usize, char> = HashMap::new();
         let mut temp_f_char: char = ' '; //Temporary character used for first_char
         let mut temp_L_char: char = ' '; //Temporary character used for last_char
         
@@ -38,6 +44,7 @@ impl MTBFSearch {
             'B'|'b' => {
                 //DEBUGGING should be from ' ' to '~'
                 for ch in ' '..='~' {
+                    
                     temp_char_list.push(ch);
                 }           
             },
@@ -46,7 +53,16 @@ impl MTBFSearch {
             'F'|'f' => {
                 // From space character throughout the entire unicode library
                 for ch in ' '..='𫠝' {
-                    temp_char_list.push(ch);
+                    // If valid unicode character, then push to list
+                    let codepoint = ch as u32;
+                    match char::from_u32(codepoint) {
+                        Some(_) => {
+                            temp_char_list.push(ch);
+                        },
+                        None => {
+
+                        },
+                    };
                 }
             }
 
@@ -54,7 +70,13 @@ impl MTBFSearch {
             _ => {
                 panic!("Invalid search_complexity character passed in")
             }
-        }      
+        }
+        
+        //Create HashMaps from list
+        for i in 0..temp_char_list.len() {
+            int_to_char_map.insert(i, temp_char_list[i]);
+            char_to_int_map.insert(temp_char_list[i], i);
+        }
 
         let max_length = max_length as u128;
 
@@ -79,8 +101,13 @@ impl MTBFSearch {
             vec_of_pass_guesses.push(vch);
         }
 
+        //DEBUGGING
+        // Formula is correct, but counting unicode characters is not
+        let test = guess_to_char_array(352254, num_chars, &temp_char_list);
+        println!("{:?}", test);
+        
         // Converts specific guess to starting password for thread
-        fn guess_to_str(guess_num: u128, base: u128) -> Vec<char> {
+        fn guess_to_char_array(guess_num: u128, base: u128, chr_list: &Vec<char>) -> Vec<char> {
             let mut list_of_remainders: Vec::<u128> = vec!();
             let mut dividend = guess_num;
 
@@ -89,17 +116,16 @@ impl MTBFSearch {
             while dividend > 0 {
                 list_of_remainders.push(dividend % base);
                 print!("{:?}", list_of_remainders);
-                print!(", Dividend: {:?}", dividend);
+                print!(", Dividend: {}", dividend);
                 dividend = dividend / base;
-                println!(", to {:?}", dividend);
+                println!(", to {}", dividend);
             }
 
             // Convert remainders to characters
             let mut vec_char: Vec<char> = Vec::new();
             for i in list_of_remainders {
-                //let mut ch = temp_char_list[i];
-                //Valid unicode starts at ' ', which is 32nd codepoint
-                vec_char.push(char::from_u32((i+31) as u32).unwrap_or('�')); 
+                let ch = chr_list[(i-1) as usize];
+                vec_char.push(ch); 
             }
             
             return vec_char;
@@ -108,12 +134,6 @@ impl MTBFSearch {
         let quotient = max_length / num_threads; //Integer division
         let remainder = max_length % num_threads;
 
-        //DEBUGGING
-        // Guess 18242 should return "!!!" as char array on basic -- DONE
-        // Guess 335876 should return "!!" as char array on full
-        let test = guess_to_str(335876, num_chars);
-        println!("{:?}", test);
-
         /*for i in num_threads {
             guess_to_str(, num_chars);
         }*/
@@ -121,6 +141,10 @@ impl MTBFSearch {
         // Initalizes and returns MTBFsearch Struct (no semicolon)
         Self {
             max_length,
+
+            //list_of_char_options: temp_char_list,
+            char_to_int_map,
+            int_to_char_map,
 
             real_password: String::from(input_password),
             real_password_char_arr: input_password.chars().collect::<Vec<char>>(),
@@ -158,15 +182,13 @@ impl MTBFSearch {
             } else {
                 self.curr_index = 0;
                 self.num_guesses += 1;
-                self.pass_guess_char_arr = self.str_next();
-                
+                self.pass_guess_char_arr = self.str_next();  
             }            
         }
-        
         self.cleanup_to_string();
     }
 
-    // Sets last_guess to max_length copies of the last character in char_from_int_map
+    // Sets last_guess to max_length copies of the last character
     fn get_last_guess (&mut self) {
         // Figure out last_guess
         for _i in 0..self.max_length {
@@ -202,18 +224,18 @@ impl MTBFSearch {
        
         // For every other guess
         else {
-            // If char at index is not the last character in self.char_from_int_map
+            // If char at index is not the last character
             if self.pass_guess_char_arr[self.curr_index] != self.last_char {
 
-                let mut temp_char = self.pass_guess_char_arr[self.curr_index]; //Cant use grapheme library, returns &str, not char  
-                let mut temp_int = temp_char as u32;
+                let mut temp_char = self.pass_guess_char_arr[self.curr_index];  
+                let mut temp_int = self.char_to_int_map[&temp_char];
 
                 temp_int += 1;
                 
                 // Change pass_guess_char_arr' character at curr_index position
                 self.pass_guess_char_arr.remove(self.curr_index);
                 
-                self.pass_guess_char_arr.insert(self.curr_index, char::from_u32(temp_int).unwrap_or('�')); // Inserts '�' if invalid unicode codepoint
+                self.pass_guess_char_arr.insert(self.curr_index, self.int_to_char_map[&(temp_int as usize)]);
                 
                 return self.pass_guess_char_arr.clone();
             }
@@ -233,10 +255,10 @@ impl MTBFSearch {
 
                 // Else if time to add another letter
                 else if self.pass_guess_char_arr.len() == (self.curr_index + 1) {
-                    // Replace character at index with first character of char_from_int_map
+                    // Replace character at index with first character
                     self.pass_guess_char_arr.remove(self.curr_index);
                     self.pass_guess_char_arr.insert(self.curr_index, self.first_char);
-                    // Append first character of char_from_int_map to pass_guess_char_arr
+                    // Append first character to pass_guess_char_arr
                     self.pass_guess_char_arr.push(self.first_char);
 
                     return self.pass_guess_char_arr.clone();

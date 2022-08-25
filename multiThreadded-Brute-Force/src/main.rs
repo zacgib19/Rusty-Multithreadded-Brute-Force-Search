@@ -118,7 +118,7 @@ fn main() {
         println!("\nStarting normal brute force cracking. NOTE, this may take a while!");
 
         // CALL BFSEARCH STRUCT instance HERE  
-        /*    
+        /*  
         let mut BFS = brute_force_class::BFSearch::new(max_length, &password, complexity_choice);
 
         let start_BF_time = Instant::now();
@@ -128,7 +128,15 @@ fn main() {
         let BF_time_elapsed = stop_BF_time - start_BF_time;
         let BF_time_elapsed = BF_time_elapsed.as_millis();
         let has_BF_guessed_correct = BFS.is_found;
+        
+        if has_BF_guessed_correct {
+            println!("Password found! Your password was: {:?}", BFS.pass_guess);
+            println!("It took {} tries to guess, and {:?} milliseconds to crack!", BFS.num_guesses, BF_time_elapsed);
+        } else {
+            println!("Despite {} guesses, your password couldn't be cracked. Great work!", BFS.num_guesses);
+        }
         */
+        //CALL MTBFS HERE
         
         let mut MTBFS = multithreaddedBFC::MTBFSearch::new(max_length, &password, complexity_choice);
 
@@ -149,7 +157,6 @@ fn main() {
         } else {
             println!("Despite {} guesses, your password couldn't be cracked. Great work!", MTBFS.num_guesses);
         }
-
 
         // Asks user if they want to continue 
         // Asks again if responce is not Yes or no

@@ -1,8 +1,12 @@
 use std::char;
+use std::collections::HashMap;
 
 // Seen as class variables
 pub struct BFSearch {
     max_length: i8,
+
+    char_to_int_map: HashMap::<char, usize>,    //Used in each thread
+    int_to_char_map: HashMap::<usize, char>,
 
     real_password: String,
     real_password_char_arr: Vec::<char>,
@@ -26,6 +30,8 @@ impl BFSearch {
     // Constructor that implements default variables
     pub fn new(max_length: i8, input_password: &str, search_complexity: char) -> Self {
         let mut temp_char_list: Vec<char> = Vec::new(); //Temporary char array used for char_from_int_map
+        let mut char_to_int_map: HashMap<char, usize> = HashMap::new();
+        let mut int_to_char_map: HashMap<usize, char> = HashMap::new();
         let mut temp_f_char: char = ' '; //Temporary character used for first_char
         let mut temp_L_char: char = ' '; //Temporary character used for last_char
         
@@ -42,8 +48,16 @@ impl BFSearch {
             // Full Unicode Library
             'F'|'f' => {
                 // From space character throughout the entire unicode library
-                for ch in ' '..='𫠝' {
-                    temp_char_list.push(ch);
+                for ch in ' '..='𫠝' {                
+                    // If valid unicode character, then push to list
+                    let codepoint = ch as u32;
+                    match char::from_u32(codepoint) {
+                        Some(_) => {
+                            temp_char_list.push(ch);
+                        },
+                        None => {
+                        },
+                    };
                 }
             }
 
@@ -59,11 +73,19 @@ impl BFSearch {
         temp_f_char = temp_char_list[0];
         temp_L_char = temp_char_list[temp_char_list.len()-1];
 
-
+        //Create HashMaps from list
+        for i in 0..temp_char_list.len() {
+            int_to_char_map.insert(i, temp_char_list[i]);
+            char_to_int_map.insert(temp_char_list[i], i);
+        }
         
         // Initalizes and returns BFsearch Struct (no semicolon)
         Self {
             max_length,
+
+            //HashMaps
+            char_to_int_map,
+            int_to_char_map,
 
             real_password: String::from(input_password),
             real_password_char_arr: input_password.chars().collect::<Vec<char>>(),
@@ -144,15 +166,15 @@ impl BFSearch {
             // If char at index is not the last character in self.char_from_int_map
             if self.pass_guess_char_arr[self.curr_index] != self.last_char {
 
-                let mut temp_char = self.pass_guess_char_arr[self.curr_index];
-                let mut temp_int = temp_char as u32;
+                let mut temp_char = self.pass_guess_char_arr[self.curr_index];  
+                let mut temp_int = self.char_to_int_map[&temp_char];
 
                 temp_int += 1;
                 
-                // Change pass_guess_char_arr character at curr_index position
+                // Change pass_guess_char_arr' character at curr_index position
                 self.pass_guess_char_arr.remove(self.curr_index);
                 
-                self.pass_guess_char_arr.insert(self.curr_index, char::from_u32(temp_int).unwrap_or('�')); // Inserts '�' if invalid unicode codepoint
+                self.pass_guess_char_arr.insert(self.curr_index, self.int_to_char_map[&(temp_int as usize)]);
                 
                 return self.pass_guess_char_arr.clone();
             }

@@ -6,9 +6,9 @@ extern crate num_cpus;
 pub struct MTBFSearch {
     max_length: u128,
 
-    //list_of_char_options: Vec::<char>,
-    char_to_int_map: HashMap::<char, usize>,
-    int_to_char_map: HashMap::<usize, char>,
+    list_of_char_options: Vec::<char>,          //Used in initialization and master search
+    char_to_int_map: HashMap::<char, usize>,    //Used in each thread
+    int_to_char_map: HashMap::<usize, char>,    //
     
     real_password: String,
     real_password_char_arr: Vec::<char>,
@@ -43,8 +43,7 @@ impl MTBFSearch {
             // Basic ASCII
             'B'|'b' => {
                 //DEBUGGING should be from ' ' to '~'
-                for ch in ' '..='~' {
-                    
+                for ch in ' '..='~' {   
                     temp_char_list.push(ch);
                 }           
             },
@@ -60,7 +59,6 @@ impl MTBFSearch {
                             temp_char_list.push(ch);
                         },
                         None => {
-
                         },
                     };
                 }
@@ -91,22 +89,10 @@ impl MTBFSearch {
             max_guess += u128::pow(num_chars, len_index as u32);
         }
 
-        // Get number of threads
+        // Get number of cores in the system
         let num_threads: u128 = num_cpus::get_physical() as u128;
 
-        // Set up vec of vecs for passguess
-        let mut vec_of_pass_guesses: Vec<Vec<char>> = Vec::new(); // Vec<char> is faster than strings
-        for i in 0..num_threads {
-            let vch: Vec<char> = vec!();
-            vec_of_pass_guesses.push(vch);
-        }
-
-        //DEBUGGING
-        // Formula is correct, but counting unicode characters is not
-        let test = guess_to_char_array(352254, num_chars, &temp_char_list);
-        println!("{:?}", test);
-        
-        // Converts specific guess to starting password for thread
+        // Function that converts specific guess to starting password for thread
         fn guess_to_char_array(guess_num: u128, base: u128, chr_list: &Vec<char>) -> Vec<char> {
             let mut list_of_remainders: Vec::<u128> = vec!();
             let mut dividend = guess_num;
@@ -131,18 +117,21 @@ impl MTBFSearch {
             return vec_char;
         }
 
-        let quotient = max_length / num_threads; //Integer division
-        let remainder = max_length % num_threads;
+        // Set up vec of vecs for passguess with starting guesses
+        let mut vec_of_pass_guesses: Vec<Vec<char>> = Vec::new(); // Vec<char> is faster than strings
+        let guessing_size = max_length / num_threads; //Integer division
+        for i in 0..num_threads {
+            let mut start_point = i*guessing_size; //Starting guess # of each thread
+            vec_of_pass_guesses.push(guess_to_char_array(start_point, num_chars, &temp_char_list));
+            println!("{}, vec: {:?}", start_point, vec_of_pass_guesses);
+        }
 
-        /*for i in num_threads {
-            guess_to_str(, num_chars);
-        }*/
 
         // Initalizes and returns MTBFsearch Struct (no semicolon)
         Self {
             max_length,
 
-            //list_of_char_options: temp_char_list,
+            list_of_char_options: temp_char_list,
             char_to_int_map,
             int_to_char_map,
 

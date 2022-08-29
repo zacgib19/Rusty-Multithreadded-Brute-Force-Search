@@ -5,7 +5,7 @@ use std::collections::HashMap;
 pub struct BFSearch {
     max_length: i8,
 
-    char_to_int_map: HashMap::<char, usize>,    //Used in each thread
+    char_to_int_map: HashMap::<char, usize>,
     int_to_char_map: HashMap::<usize, char>,
 
     real_password: String,
@@ -15,7 +15,7 @@ pub struct BFSearch {
     pass_guess_char_arr: Vec::<char>,
 
     pub num_guesses: u128,
-    curr_index: usize,       //Index for string array in binary search algorithm (in graphemes)
+    curr_index: usize,       //Index for string array in binary search algorithm
 
     first_char: char,           
     last_char: char,
@@ -91,7 +91,7 @@ impl BFSearch {
             real_password_char_arr: input_password.chars().collect::<Vec<char>>(),
 
             pass_guess: String::new(),
-            pass_guess_char_arr: Vec::new(),
+            pass_guess_char_arr: vec![temp_f_char],
             
             num_guesses: 0,
             curr_index: 0,
@@ -110,6 +110,7 @@ impl BFSearch {
         self.get_last_guess();
         
         loop {
+            self.num_guesses += 1;
             if self.is_pw_match() {
                 self.is_found = true;   
                 break;
@@ -117,9 +118,7 @@ impl BFSearch {
                 break;
             } else {
                 self.curr_index = 0;
-                
                 self.pass_guess_char_arr = self.str_next();
-                self.num_guesses += 1;
             }            
         }
         
@@ -153,80 +152,69 @@ impl BFSearch {
 
     // Updates pass_guess_char_arr in binary search fashion
     fn str_next(&mut self) -> Vec<char> {
+        // If char at index is not the last character in self.char_from_int_map
+        if self.pass_guess_char_arr[self.curr_index] != self.last_char {
 
-        // For very first guess
-        if self.pass_guess_char_arr.len() == 0 {
-            // Add first character
-            self.pass_guess_char_arr.push(self.first_char);
+            let mut temp_char = self.pass_guess_char_arr[self.curr_index];  
+            let mut temp_int = self.char_to_int_map[&temp_char];
+
+            temp_int += 1;
+            
+            // Change pass_guess_char_arr' character at curr_index position
+            self.pass_guess_char_arr.remove(self.curr_index);
+            
+            self.pass_guess_char_arr.insert(self.curr_index, self.int_to_char_map[&(temp_int as usize)]);
+            
             return self.pass_guess_char_arr.clone();
         }
 
-        // For every other guess
-        else {
-            // If char at index is not the last character in self.char_from_int_map
-            if self.pass_guess_char_arr[self.curr_index] != self.last_char {
-
-                let mut temp_char = self.pass_guess_char_arr[self.curr_index];  
-                let mut temp_int = self.char_to_int_map[&temp_char];
-
-                temp_int += 1;
+        // If char at index is last 
+        else {   
+            // If only character in self.pass_guess_char_arr
+            if self.pass_guess_char_arr.len() == 1 {
                 
-                // Change pass_guess_char_arr' character at curr_index position
-                self.pass_guess_char_arr.remove(self.curr_index);
-                
-                self.pass_guess_char_arr.insert(self.curr_index, self.int_to_char_map[&(temp_int as usize)]);
-                
+                // Reset first character
+                self.pass_guess_char_arr.remove(0);
+                self.pass_guess_char_arr.insert(0, self.first_char);
+                // Add second character
+                self.pass_guess_char_arr.push(self.first_char);
                 return self.pass_guess_char_arr.clone();
             }
 
-            // If char at index is last 
+            // Else if time to add another letter
+            else if self.pass_guess_char_arr.len() == (self.curr_index + 1) {
+                
+                // Replace character at index with first character of char_from_int_map
+                self.pass_guess_char_arr.remove(self.curr_index);
+                self.pass_guess_char_arr.insert(self.curr_index, self.first_char);
+                // Append first character of char_from_int_map to pass_guess_char_arr
+                self.pass_guess_char_arr.push(self.first_char);
+
+                return self.pass_guess_char_arr.clone();
+            }
+
+            // If last possible string to check
+            else if self.is_last_guess() {
+                // Do nothing and return
+                return self.pass_guess_char_arr.clone();
+            }
+
             else {   
-                // If only character in self.pass_guess_char_arr
-                if self.pass_guess_char_arr.len() == 1 {
-                    
-                    // Reset first character
-                    self.pass_guess_char_arr.remove(0);
-                    self.pass_guess_char_arr.insert(0, self.first_char);
-                    // Add second character
-                    self.pass_guess_char_arr.push(self.first_char);
-                    return self.pass_guess_char_arr.clone();
-                }
+                // Increment currIndexes
+                self.curr_index += 1;
+                
+                // Recursive check for last char
+                let mut return_string = self.str_next();
+                
+                //Decrement currIndexes
+                self.curr_index -= 1;
 
-                // Else if time to add another letter
-                else if self.pass_guess_char_arr.len() == (self.curr_index + 1) {
-                    
-                    // Replace character at index with first character of char_from_int_map
-                    self.pass_guess_char_arr.remove(self.curr_index);
-                    self.pass_guess_char_arr.insert(self.curr_index, self.first_char);
-                    // Append first character of char_from_int_map to pass_guess_char_arr
-                    self.pass_guess_char_arr.push(self.first_char);
+                // Replace character at curr_index with first char
+                return_string.remove(self.curr_index);
+                return_string.insert(self.curr_index, self.first_char);
 
-                    return self.pass_guess_char_arr.clone();
-                }
-
-                // If last possible string to check
-                else if self.is_last_guess() {
-                    // Do nothing and return
-                    return self.pass_guess_char_arr.clone();
-                }
-
-                else {   
-                    // Increment currIndexes
-                    self.curr_index += 1;
-                    
-                    // Recursive check for last char
-                    let mut return_string = self.str_next();
-                    
-                    //Decrement currIndexes
-                    self.curr_index -= 1;
-  
-                    // Replace character at curr_index with first char
-                    return_string.remove(self.curr_index);
-                    return_string.insert(self.curr_index, self.first_char);
-
-                    return return_string;
-                }
-            };
-        }
+                return return_string;
+            }
+        };
     }   
 }

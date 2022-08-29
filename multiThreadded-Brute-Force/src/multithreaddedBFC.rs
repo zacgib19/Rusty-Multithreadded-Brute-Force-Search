@@ -18,8 +18,9 @@ pub struct MTBFSearch {
 
     max_num_guesses: u128,
     pub num_guesses: u128,
+    guessing_size, u128
 
-    curr_index: usize,       //Index for string array in binary search algorithm (in graphemes)
+    curr_index: usize,       //Index for string array in binary search algorithm
     first_char: char,           
     last_char: char,
     last_guess: Vec::<char>,
@@ -35,8 +36,6 @@ impl MTBFSearch {
         let mut temp_char_list: Vec<char> = Vec::new(); //Temporary char array used
         let mut char_to_int_map: HashMap<char, usize> = HashMap::new();
         let mut int_to_char_map: HashMap<usize, char> = HashMap::new();
-        let mut temp_f_char: char = ' '; //Temporary character used for first_char
-        let mut temp_L_char: char = ' '; //Temporary character used for last_char
         
         // Sets unicode list to iterate over
         match search_complexity {
@@ -52,7 +51,7 @@ impl MTBFSearch {
             'F'|'f' => {
                 // From space character throughout the entire unicode library
                 for ch in ' '..='𫠝' {
-                    // If valid unicode character, then push to list
+                    // If valid unicode character, then push to list (For loop based on codepoints, not valid characters)
                     let codepoint = ch as u32;
                     match char::from_u32(codepoint) {
                         Some(_) => {
@@ -70,64 +69,69 @@ impl MTBFSearch {
             }
         }
         
-        //Create HashMaps from list
+        // Gets first and last character
+        let temp_f_char: char = temp_char_list[0]; //Temporary character used for first_char
+        let temp_L_char: char = temp_char_list[temp_char_list.len()-1]; //Temporary character used for last_char
+
+        //Create HashMaps from temp_char_list (Starts counting at 1)
         for i in 0..temp_char_list.len() {
-            int_to_char_map.insert(i, temp_char_list[i]);
-            char_to_int_map.insert(temp_char_list[i], i);
+            int_to_char_map.insert(i+1, temp_char_list[i]);
+            char_to_int_map.insert(temp_char_list[i], i+1);
         }
+
+        // Handles 0th position (null) character
+        int_to_char_map.insert(0, '');
+        char_to_int_map.insert('', 0);
 
         let max_length = max_length as u128;
 
-        // Gets first and last character
-        temp_f_char = temp_char_list[0];
-        temp_L_char = temp_char_list[temp_char_list.len()-1];
-
         // Calculate max amount of guesses
         let mut max_guess: u128 = 0;
-        let mut num_chars: u128 = temp_char_list.len() as u128;
+        let num_chars: u128 = temp_char_list.len() as u128;
         for len_index in 1..=max_length {
             max_guess += u128::pow(num_chars, len_index as u32);
         }
 
-        // Get number of cores in the system
-        let num_threads: u128 = num_cpus::get_physical() as u128;
-
         // Function that converts specific guess to starting password for thread
-        fn guess_to_char_array(guess_num: u128, base: u128, chr_list: &Vec<char>) -> Vec<char> {
+        // WITHOUT Looping through guesses again
+        fn guess_to_char_array(guess_num: u128, base: u128, chr_list: &HashMap<usize,char>) -> Vec<char> {
             let mut list_of_remainders: Vec::<u128> = vec!();
             let mut dividend = guess_num;
 
             // Converts to base n from base 10, where n is amount of possible characters
             // Another way to conceptually think about passwords
             while dividend > 0 {
-                list_of_remainders.push(dividend % base);
-                print!("{:?}", list_of_remainders);
-                print!(", Dividend: {}", dividend);
-                dividend = dividend / base;
-                println!(", to {}", dividend);
+                list_of_remainders.push((dividend % base));
+                print!("{}", dividend);
+                dividend = dividend / base; //Integer division
+                println!(", to {} w/ remainder {:?}", dividend, list_of_remainders[list_of_remainders.len()-1]);
             }
-
+            
+            println!("{:?}", list_of_remainders);
             // Convert remainders to characters
             let mut vec_char: Vec<char> = Vec::new();
             for i in list_of_remainders {
-                let ch = chr_list[(i-1) as usize];
-                vec_char.push(ch); 
+                let ch = chr_list[&(i as usize)];
+                vec_char.push(ch);
             }
-            
+            println!("Remainders turn into: {:?} \n", vec_char);
             return vec_char;
         }
 
         // Set up vec of vecs for passguess with starting guesses
+        let num_threads: u128 = (num_cpus::get_physical()) as u128; // Get number of cores in the system
         let mut vec_of_pass_guesses: Vec<Vec<char>> = Vec::new(); // Vec<char> is faster than strings
-        let guessing_size = max_length / num_threads; //Integer division
+        let guessing_size = max_guess / num_threads; //Integer division
+        
+        // Evenly divides the starting points
         for i in 0..num_threads {
-            let mut start_point = i*guessing_size; //Starting guess # of each thread
-            vec_of_pass_guesses.push(guess_to_char_array(start_point, num_chars, &temp_char_list));
-            println!("{}, vec: {:?}", start_point, vec_of_pass_guesses);
+            let starting_point = i*guessing_size; //Starting guess # of each thread
+            vec_of_pass_guesses.push(guess_to_char_array(starting_point, num_chars, &int_to_char_map));
         }
+        //println!("{:?}", guess_to_char_array(68489349, num_chars, &int_to_char_map));
+        println!("Char_Array of starting_guesses: {:?}", vec_of_pass_guesses);
 
-
-        // Initalizes and returns MTBFsearch Struct (no semicolon)
+        // Initalizes and returns MTBFsearch Struct (no semicolon to return struct)
         Self {
             max_length,
 
@@ -139,10 +143,11 @@ impl MTBFSearch {
             real_password_char_arr: input_password.chars().collect::<Vec<char>>(),
 
             pass_guess: String::new(),
-            pass_guess_char_arr: Vec::new(),
+            pass_guess_char_arr: vec!(temp_f_char),
                 
             max_num_guesses: max_guess,
             num_guesses: 0,
+            guessing_size,
 
             curr_index: 0,
             first_char: temp_f_char,
@@ -163,6 +168,7 @@ impl MTBFSearch {
         self.get_last_guess();
         
         loop {
+            self.num_guesses += 1;
             if self.is_pw_match() {
                 self.is_found = true;   
                 break;
@@ -170,7 +176,6 @@ impl MTBFSearch {
                 break;
             } else {
                 self.curr_index = 0;
-                self.num_guesses += 1;
                 self.pass_guess_char_arr = self.str_next();  
             }            
         }
@@ -195,6 +200,7 @@ impl MTBFSearch {
         self.num_guesses == self.max_num_guesses
     }
     
+    // Converts char array to string
     fn cleanup_to_string(&mut self) {
         for ch in &self.pass_guess_char_arr {
             self.pass_guess.push(*ch);
@@ -202,79 +208,67 @@ impl MTBFSearch {
     }
 
     // Updates pass_guess_char_arr in binary search fashion
-    fn str_next(&mut self) -> Vec<char> {
+    fn str_next(&mut self) -> Vec<char> {  
+        // If char at index is not the last character
+        if self.pass_guess_char_arr[self.curr_index] != self.last_char {
 
-        // For very first guess
-        if self.pass_guess_char_arr.len() == 0 {
-            // Add first character
-            self.pass_guess_char_arr.push(self.first_char);
+            let mut temp_char = self.pass_guess_char_arr[self.curr_index];  
+            let mut temp_int: usize = self.char_to_int_map[&temp_char] as usize;
+
+            temp_int += 1;
+            
+            // Change pass_guess_char_arr' character at curr_index position
+            self.pass_guess_char_arr.remove(self.curr_index);
+            
+            self.pass_guess_char_arr.insert(self.curr_index, self.int_to_char_map[&temp_int]);
+            
             return self.pass_guess_char_arr.clone();
         }
-       
-        // For every other guess
+
+        // If char at index is last 
         else {
-            // If char at index is not the last character
-            if self.pass_guess_char_arr[self.curr_index] != self.last_char {
-
-                let mut temp_char = self.pass_guess_char_arr[self.curr_index];  
-                let mut temp_int = self.char_to_int_map[&temp_char];
-
-                temp_int += 1;
-                
-                // Change pass_guess_char_arr' character at curr_index position
-                self.pass_guess_char_arr.remove(self.curr_index);
-                
-                self.pass_guess_char_arr.insert(self.curr_index, self.int_to_char_map[&(temp_int as usize)]);
-                
+            // If only character in self.pass_guess_char_arr
+            if self.pass_guess_char_arr.len() == 1 {
+                // Reset first character
+                self.pass_guess_char_arr.remove(0);
+                self.pass_guess_char_arr.insert(0, self.first_char);
+                // Add second character
+                self.pass_guess_char_arr.push(self.first_char);
                 return self.pass_guess_char_arr.clone();
             }
 
-            // If char at index is last 
+
+            // Else if time to add another letter
+            else if self.pass_guess_char_arr.len() == (self.curr_index + 1) {
+                // Replace character at index with first character
+                self.pass_guess_char_arr.remove(self.curr_index);
+                self.pass_guess_char_arr.insert(self.curr_index, self.first_char);
+                // Append first character to pass_guess_char_arr
+                self.pass_guess_char_arr.push(self.first_char);
+
+                return self.pass_guess_char_arr.clone();
+            }
+
+            // If last possible string to check
+            else if self.is_last_guess() {
+                // Do nothing and return
+                return self.pass_guess_char_arr.clone();
+            }
+
             else {
-                // If only character in self.pass_guess_char_arr
-                if self.pass_guess_char_arr.len() == 1 {
-                    // Reset first character
-                    self.pass_guess_char_arr.remove(0);
-                    self.pass_guess_char_arr.insert(0, self.first_char);
-                    // Add second character
-                    self.pass_guess_char_arr.push(self.first_char);
-                    return self.pass_guess_char_arr.clone();
-                }
+                //Increment currIndex
+                self.curr_index += 1;
+                
+                let mut return_string = self.str_next();
+                //Decrement currIndex
+                self.curr_index -= 1;
 
+                // Replace character at curr_index with first char
+                return_string.remove(self.curr_index);
+                return_string.insert(self.curr_index, self.first_char);
 
-                // Else if time to add another letter
-                else if self.pass_guess_char_arr.len() == (self.curr_index + 1) {
-                    // Replace character at index with first character
-                    self.pass_guess_char_arr.remove(self.curr_index);
-                    self.pass_guess_char_arr.insert(self.curr_index, self.first_char);
-                    // Append first character to pass_guess_char_arr
-                    self.pass_guess_char_arr.push(self.first_char);
-
-                    return self.pass_guess_char_arr.clone();
-                }
-
-                // If last possible string to check
-                else if self.is_last_guess() {
-                    // Do nothing and return
-                    return self.pass_guess_char_arr.clone();
-                }
-
-                else {
-                    //Increment currIndexes
-                    self.curr_index += 1;
-                    
-                    let mut return_string = self.str_next();
-                    
-                    //Decrement currIndexes
-                    self.curr_index -= 1;
-  
-                    // Replace character at curr_index with first char
-                    return_string.remove(self.curr_index);
-                    return_string.insert(self.curr_index, self.first_char);
-
-                    return return_string;
-                }
-            };
-        }
+                return return_string;
+            }
+        };
     }   
 }

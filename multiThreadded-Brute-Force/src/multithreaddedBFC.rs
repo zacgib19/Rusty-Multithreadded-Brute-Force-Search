@@ -18,7 +18,7 @@ pub struct MTBFSearch {
 
     max_num_guesses: u128,
     pub num_guesses: u128,
-    guessing_size, u128
+    guessing_size: u128,
 
     curr_index: usize,       //Index for string array in binary search algorithm
     first_char: char,           
@@ -79,9 +79,10 @@ impl MTBFSearch {
             char_to_int_map.insert(temp_char_list[i], i+1);
         }
 
-        // Handles 0th position (null) character
-        int_to_char_map.insert(0, '');
-        char_to_int_map.insert('', 0);
+        // Handles 0th position (null) character of base 95
+        // (character is actually outside given unicode range)
+        int_to_char_map.insert(0, '􀀀');
+        char_to_int_map.insert('􀀀', 0);
 
         let max_length = max_length as u128;
 
@@ -128,7 +129,9 @@ impl MTBFSearch {
             let starting_point = i*guessing_size; //Starting guess # of each thread
             vec_of_pass_guesses.push(guess_to_char_array(starting_point, num_chars, &int_to_char_map));
         }
-        //println!("{:?}", guess_to_char_array(68489349, num_chars, &int_to_char_map));
+
+        // "!!" for Full Search
+        //println!("{:?}", guess_to_char_array(352254, num_chars, &int_to_char_map))
         println!("Char_Array of starting_guesses: {:?}", vec_of_pass_guesses);
 
         // Initalizes and returns MTBFsearch Struct (no semicolon to return struct)
@@ -227,7 +230,6 @@ impl MTBFSearch {
 
         // If char at index is last 
         else {
-            // If only character in self.pass_guess_char_arr
             if self.pass_guess_char_arr.len() == 1 {
                 // Reset first character
                 self.pass_guess_char_arr.remove(0);
@@ -236,7 +238,6 @@ impl MTBFSearch {
                 self.pass_guess_char_arr.push(self.first_char);
                 return self.pass_guess_char_arr.clone();
             }
-
 
             // Else if time to add another letter
             else if self.pass_guess_char_arr.len() == (self.curr_index + 1) {

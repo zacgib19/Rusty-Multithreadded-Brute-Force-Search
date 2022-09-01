@@ -7,8 +7,8 @@ pub struct MTBFSearch {
     max_length: u128,
 
     list_of_char_options: Vec::<char>,          //Used in initialization and master search
-    char_to_int_map: HashMap::<char, usize>,    //Used in each thread
-    int_to_char_map: HashMap::<usize, char>,    //
+    char_to_int_map: HashMap::<char, u32>,    //Used in each thread
+    int_to_char_map: HashMap::<u32, char>,    
     
     real_password: String,
     real_password_char_arr: Vec::<char>,
@@ -34,8 +34,8 @@ impl MTBFSearch {
     // Constructor that implements default variables
     pub fn new(max_length: i8, input_password: &str, search_complexity: char) -> Self {
         let mut temp_char_list: Vec<char> = Vec::new(); //Temporary char array used
-        let mut char_to_int_map: HashMap<char, usize> = HashMap::new();
-        let mut int_to_char_map: HashMap<usize, char> = HashMap::new();
+        let mut char_to_int_map: HashMap<char, u32> = HashMap::new();
+        let mut int_to_char_map: HashMap<u32, char> = HashMap::new();
         
         // Sets unicode list to iterate over
         match search_complexity {
@@ -75,8 +75,8 @@ impl MTBFSearch {
 
         //Create HashMaps from temp_char_list (Starts counting at 1)
         for i in 0..temp_char_list.len() {
-            int_to_char_map.insert(i+1, temp_char_list[i]);
-            char_to_int_map.insert(temp_char_list[i], i+1);
+            int_to_char_map.insert((i+1) as u32, temp_char_list[i]);
+            char_to_int_map.insert(temp_char_list[i], (i+1) as u32);
         }
 
         // Handles 0th position (null) character of base 95
@@ -95,7 +95,7 @@ impl MTBFSearch {
 
         // Function that converts specific guess to starting password for thread
         // WITHOUT Looping through guesses again
-        fn guess_to_char_array(guess_num: u128, base: u128, chr_list: &HashMap<usize,char>) -> Vec<char> {
+        fn guess_to_char_array(guess_num: u128, base: u128, chr_list: &HashMap<u32,char>) -> Vec<char> {
             let mut list_of_remainders: Vec::<u128> = vec!();
             let mut dividend = guess_num;
 
@@ -112,7 +112,7 @@ impl MTBFSearch {
             // Convert remainders to characters
             let mut vec_char: Vec<char> = Vec::new();
             for i in list_of_remainders {
-                let ch = chr_list[&(i as usize)];
+                let ch = chr_list[&(i as u32)];
                 vec_char.push(ch);
             }
             println!("Remainders turn into: {:?} \n", vec_char);
@@ -215,15 +215,16 @@ impl MTBFSearch {
         // If char at index is not the last character
         if self.pass_guess_char_arr[self.curr_index] != self.last_char {
 
-            let mut temp_char = self.pass_guess_char_arr[self.curr_index];  
-            let mut temp_int: usize = self.char_to_int_map[&temp_char] as usize;
-
-            temp_int += 1;
+            let temp_char = self.pass_guess_char_arr[self.curr_index];
+            let next_uni_codepoint: u32 = (temp_char as u32 + 1) as u32;
+            let next_char_mapping: u32 = next_uni_codepoint-31;
             
+            //println!("{:?}", self.pass_guess_char_arr);
             // Change pass_guess_char_arr' character at curr_index position
             self.pass_guess_char_arr.remove(self.curr_index);
             
-            self.pass_guess_char_arr.insert(self.curr_index, self.int_to_char_map[&temp_int]);
+            self.pass_guess_char_arr.insert(self.curr_index, char::from_u32(next_uni_codepoint)
+                                                            .unwrap_or(self.int_to_char_map[&next_char_mapping]));
             
             return self.pass_guess_char_arr.clone();
         }

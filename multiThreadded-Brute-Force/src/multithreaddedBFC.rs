@@ -4,11 +4,7 @@ extern crate num_cpus;
 
 // Seen as class variables
 pub struct MTBFSearch {
-    max_length: u128,
-
-    list_of_char_options: Vec::<char>,          //Used in initialization and master search
-    char_to_int_map: HashMap::<char, u32>,    //Used in each thread
-    int_to_char_map: HashMap::<u32, char>,    
+    max_length: u128,  
     
     real_password: String,
     real_password_char_arr: Vec::<char>,
@@ -33,9 +29,11 @@ impl MTBFSearch {
 
     // Constructor that implements default variables
     pub fn new(max_length: i8, input_password: &str, search_complexity: char) -> Self {
-        let mut temp_char_list: Vec<char> = Vec::new(); //Temporary char array used
-        let mut char_to_int_map: HashMap<char, u32> = HashMap::new();
-        let mut int_to_char_map: HashMap<u32, char> = HashMap::new();
+        let mut temp_char_list: Vec<char> = Vec::new(); //Temporary char array used only for guessToCharArray function
+
+        // Gets first and last character
+        let temp_f_char: char = ' '; //Temporary character used for first_char
+        let mut temp_l_char: char = ' '; //Temporary character used for last_char
         
         // Sets unicode list to iterate over
         match search_complexity {
@@ -44,7 +42,8 @@ impl MTBFSearch {
                 //DEBUGGING should be from ' ' to '~'
                 for ch in ' '..='~' {   
                     temp_char_list.push(ch);
-                }           
+                }
+                temp_l_char = '~';          
             },
 
             // Full Unicode Library
@@ -57,6 +56,7 @@ impl MTBFSearch {
                 for ch2 in '\u{E000}'..='\u{10FFFF}' {
                     temp_char_list.push(ch2);
                 }
+                temp_l_char = '\u{10FFFF}';
             }
 
             // Crash program if anything else
@@ -64,22 +64,8 @@ impl MTBFSearch {
                 panic!("Invalid search_complexity character passed in")
             }
         }
-        
-        // Gets first and last character
-        let temp_f_char: char = temp_char_list[0]; //Temporary character used for first_char
-        let temp_L_char: char = temp_char_list[temp_char_list.len()-1]; //Temporary character used for last_char
 
-        //Create HashMaps from temp_char_list (Starts counting at 1)
-        for i in 0..temp_char_list.len() {
-            int_to_char_map.insert((i+1) as u32, temp_char_list[i]);
-            char_to_int_map.insert(temp_char_list[i], (i+1) as u32);
-        }
-
-        // Handles 0th position (null) character
-        // (character is outside given unicode range)
-        int_to_char_map.insert(0, '\0');
-        char_to_int_map.insert('\0', 0);
-
+        // Converts max_length to u128
         let max_length = max_length as u128;
 
         // Calculate max amount of guesses
@@ -89,9 +75,13 @@ impl MTBFSearch {
             max_guess += u128::pow(num_chars, len_index as u32);
         }
 
+        // Handles 0th position (null) character
+        // null character can't be included in max_guess calculation
+        temp_char_list.insert(0, '\0');
+
         // Function that converts specific guess to starting password for thread
         // WITHOUT Looping through guesses again
-        fn guess_to_char_array(guess_num: u128, base: u128, chr_list: &HashMap<u32,char>) -> Vec<char> {
+        fn guess_to_char_array(guess_num: u128, base: u128, chr_list: &Vec<char>) -> Vec<char> {
             let mut list_of_remainders: Vec::<u128> = vec!();
             let mut dividend = guess_num;
 
@@ -108,7 +98,7 @@ impl MTBFSearch {
             // Convert remainders to characters
             let mut vec_char: Vec<char> = Vec::new();
             for i in list_of_remainders {
-                let ch = chr_list[&(i as u32)];
+                let ch = chr_list[i as usize];
                 vec_char.push(ch);
             }
             println!("Remainders turn into: {:?} \n", vec_char);
@@ -123,20 +113,14 @@ impl MTBFSearch {
         // Evenly divides the starting points
         for i in 0..num_threads {
             let starting_point = i*guessing_size; //Starting guess # of each thread
-            vec_of_pass_guesses.push(guess_to_char_array(starting_point, num_chars, &int_to_char_map));
+            vec_of_pass_guesses.push(guess_to_char_array(starting_point, num_chars, &temp_char_list));
         }
 
-        // "!!" for Full Search
-        //println!("{:?}", guess_to_char_array(352254, num_chars, &int_to_char_map))
         println!("Char_Array of starting_guesses: {:?}", vec_of_pass_guesses);
 
         // Initalizes and returns MTBFsearch Struct (no semicolon to return struct)
         Self {
             max_length,
-
-            list_of_char_options: temp_char_list,
-            char_to_int_map,
-            int_to_char_map,
 
             real_password: String::from(input_password),
             real_password_char_arr: input_password.chars().collect::<Vec<char>>(),
@@ -150,7 +134,7 @@ impl MTBFSearch {
 
             curr_index: 0,
             first_char: temp_f_char,
-            last_char: temp_L_char,
+            last_char: temp_l_char,
             last_guess: Vec::new(),
 
             is_found: false,
@@ -208,6 +192,44 @@ impl MTBFSearch {
 
     // Updates pass_guess_char_arr in binary search fashion
     fn str_next(&mut self) -> Vec<char> {
+        //VERY fast unicode iterator
+        struct UnicodeWrapper {
+            current_loc: u32
+        }
+
+        impl UnicodeWrapper {
+            fn new(id: u32) -> Self {
+                Self {
+                    current_loc: id
+                }
+            }
+        }
+
+        // Turn the struct into something that can be looped through
+        impl Iterator for UnicodeWrapper {
+            // Output of the iterator is a char
+            type Item = char;
+            // Returns next Unicode character, updating currentLoc
+            // to the next possible location
+            fn next(&mut self) -> Option<Self::Item> {
+                // Exit the for loop if we've already gotten the last
+                // Unicode character.
+                if self.current_loc == 0x110000 { return None; }
+
+                self.current_loc = match self.current_loc {
+                    
+                    //Skips invalid characters
+                    0xd7ff => 0xe000,
+                    // Bump up the count if everything is normal
+                    _      => self.current_loc + 1
+                };
+                let result = char::from_u32(self.current_loc).unwrap();
+                
+                // Give result to for loop
+                Some(result)
+            }
+        }
+
         // If char at index is the 'null' character
         if self.pass_guess_char_arr[self.curr_index] == '\0' {
             self.pass_guess_char_arr.remove(self.curr_index);
@@ -216,20 +238,14 @@ impl MTBFSearch {
         }
         // If char at index is not the last character
         else if self.pass_guess_char_arr[self.curr_index] != self.last_char {
+            let mut unicode_looper = UnicodeWrapper::new((self.pass_guess_char_arr[self.curr_index]) as u32);
 
-            let temp_char = self.pass_guess_char_arr[self.curr_index];
-            let next_uni_codepoint: u32 = (temp_char as u32 + 1) as u32;
-            let next_char_mapping: u32 = next_uni_codepoint-31;
-            
-            if next_uni_codepoint >= 0x10F6FF {
-                println!("{:?}", self.pass_guess_char_arr);
-            }
             // Change pass_guess_char_arr' character at curr_index position
             self.pass_guess_char_arr.remove(self.curr_index);
             
-            self.pass_guess_char_arr.insert(self.curr_index, char::from_u32(next_uni_codepoint)
-                                                            .unwrap_or(self.int_to_char_map[&next_char_mapping]));
-
+            self.pass_guess_char_arr.insert(self.curr_index, unicode_looper.next().unwrap());//next_uni_codepoint)
+                                                            //.unwrap_or(self.int_to_char_map[&next_char_mapping]));
+            //println!("{:?}", self.pass_guess_char_arr);
             return self.pass_guess_char_arr.clone();
         }
 

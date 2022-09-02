@@ -5,9 +5,6 @@ use std::collections::HashMap;
 pub struct BFSearch {
     max_length: i8,
 
-    char_to_int_map: HashMap::<char, usize>,
-    int_to_char_map: HashMap::<usize, char>,
-
     real_password: String,
     real_password_char_arr: Vec::<char>,
 
@@ -29,32 +26,19 @@ impl BFSearch {
 
     // Constructor that implements default variables
     pub fn new(max_length: i8, input_password: &str, search_complexity: char) -> Self {
-        let mut temp_char_list: Vec<char> = Vec::new(); //Temporary char array used for char_from_int_map
-        let mut char_to_int_map: HashMap<char, usize> = HashMap::new();
-        let mut int_to_char_map: HashMap<usize, char> = HashMap::new();
-        let mut temp_f_char: char = ' '; //Temporary character used for first_char
-        let mut temp_L_char: char = ' '; //Temporary character used for last_char
+        let temp_f_char: char = ' '; //Temporary character used for first_char
+        let mut temp_l_char: char = ' '; //Temporary character used for last_char
         
         // Sets unicode list to iterate over
         match search_complexity {
             // Basic ASCII
             'B'|'b' => {
-                //DEBUGGING should be from ' ' to '~'
-                for ch in ' '..='~' {
-                    temp_char_list.push(ch);
-                }           
+                temp_l_char = '~';         
             },
 
             // Full Unicode Library
             'F'|'f' => {
-                // From space character throughout the entire unicode library
-                for ch in ' '..='\u{D7FF}' {
-                    temp_char_list.push(ch);
-                }
-                // Skips invalid characters \u{D800} through \u{DFFF}
-                for ch2 in '\u{E000}'..='\u{10FFFF}' {
-                    temp_char_list.push(ch2);
-                }
+                temp_l_char = '\u{10FFFF}';
             }
 
             // Crash program if anything else
@@ -63,25 +47,10 @@ impl BFSearch {
             }
 
         }
-    
-
-        // Gets first and last character
-        temp_f_char = temp_char_list[0];
-        temp_L_char = temp_char_list[temp_char_list.len()-1];
-
-        //Create HashMaps from list
-        for i in 0..temp_char_list.len() {
-            int_to_char_map.insert(i, temp_char_list[i]);
-            char_to_int_map.insert(temp_char_list[i], i);
-        }
         
         // Initalizes and returns BFsearch Struct (no semicolon)
         Self {
             max_length,
-
-            //HashMaps
-            char_to_int_map,
-            int_to_char_map,
 
             real_password: String::from(input_password),
             real_password_char_arr: input_password.chars().collect::<Vec<char>>(),
@@ -93,7 +62,7 @@ impl BFSearch {
             curr_index: 0,
 
             first_char: temp_f_char,
-            last_char: temp_L_char,
+            last_char: temp_l_char,
             last_guess: Vec::new(),
 
             is_found: false,
@@ -148,27 +117,67 @@ impl BFSearch {
 
     // Updates pass_guess_char_arr in binary search fashion
     fn str_next(&mut self) -> Vec<char> {
-        // If char at index is not the last character in self.char_from_int_map
-        if self.pass_guess_char_arr[self.curr_index] != self.last_char {
+        //VERY fast unicode iterator
+        struct UnicodeWrapper {
+            current_loc: u32
+        }
 
-            let mut temp_char = self.pass_guess_char_arr[self.curr_index];  
-            let mut temp_int = self.char_to_int_map[&temp_char];
+        impl UnicodeWrapper {
+            fn new(id: u32) -> Self {
+                Self {
+                    current_loc: id
+                }
+            }
+        }
 
-            temp_int += 1;
-            
+        // Turn the struct into something that can be looped through
+        impl Iterator for UnicodeWrapper {
+            // Output of the iterator is a char
+            type Item = char;
+            // Returns next Unicode character, updating currentLoc
+            // to the next possible location
+            fn next(&mut self) -> Option<Self::Item> {
+                // Exit the for loop if we've already gotten the last
+                // Unicode character.
+                if self.current_loc == 0x110000 { return None; }
+
+                self.current_loc = match self.current_loc {
+                    
+                    //Skips invalid characters
+                    0xd7ff => 0xe000,
+                    // Bump up the count if everything is normal
+                    _      => self.current_loc + 1
+                };
+                let result = char::from_u32(self.current_loc).unwrap();
+                
+                // Give result to for loop
+                Some(result)
+            }
+        }
+
+        // If char at index is the 'null' character
+        if self.pass_guess_char_arr[self.curr_index] == '\0' {
+            self.pass_guess_char_arr.remove(self.curr_index);
+            self.pass_guess_char_arr.insert(self.curr_index, self.first_char);
+            return self.pass_guess_char_arr.clone();
+        }
+        // If char at index is not the last character
+        else if self.pass_guess_char_arr[self.curr_index] != self.last_char {
+            let mut unicode_looper = UnicodeWrapper::new((self.pass_guess_char_arr[self.curr_index]) as u32);
+
             // Change pass_guess_char_arr' character at curr_index position
             self.pass_guess_char_arr.remove(self.curr_index);
             
-            self.pass_guess_char_arr.insert(self.curr_index, self.int_to_char_map[&(temp_int as usize)]);
-            
+            self.pass_guess_char_arr.insert(self.curr_index, unicode_looper.next().unwrap());//next_uni_codepoint)
+                                                            //.unwrap_or(self.int_to_char_map[&next_char_mapping]));
+            //println!("{:?}", self.pass_guess_char_arr);
             return self.pass_guess_char_arr.clone();
         }
 
         // If char at index is last 
-        else {   
-            // If only character in self.pass_guess_char_arr
+        else {
+            
             if self.pass_guess_char_arr.len() == 1 {
-                
                 // Reset first character
                 self.pass_guess_char_arr.remove(0);
                 self.pass_guess_char_arr.insert(0, self.first_char);
@@ -179,11 +188,10 @@ impl BFSearch {
 
             // Else if time to add another letter
             else if self.pass_guess_char_arr.len() == (self.curr_index + 1) {
-                
-                // Replace character at index with first character of char_from_int_map
+                // Replace character at index with first character
                 self.pass_guess_char_arr.remove(self.curr_index);
                 self.pass_guess_char_arr.insert(self.curr_index, self.first_char);
-                // Append first character of char_from_int_map to pass_guess_char_arr
+                // Append first character to pass_guess_char_arr
                 self.pass_guess_char_arr.push(self.first_char);
 
                 return self.pass_guess_char_arr.clone();
@@ -195,14 +203,11 @@ impl BFSearch {
                 return self.pass_guess_char_arr.clone();
             }
 
-            else {   
-                // Increment currIndexes
+            else {
+                //Increment currIndex
                 self.curr_index += 1;
-                
-                // Recursive check for last char
                 let mut return_string = self.str_next();
-                
-                //Decrement currIndexes
+                //Decrement currIndex
                 self.curr_index -= 1;
 
                 // Replace character at curr_index with first char

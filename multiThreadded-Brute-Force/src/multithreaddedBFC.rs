@@ -50,16 +50,12 @@ impl MTBFSearch {
             // Full Unicode Library
             'F'|'f' => {
                 // From space character throughout the entire unicode library
-                for ch in ' '..='𫠝' {
-                    // If valid unicode character, then push to list (For loop based on codepoints, not valid characters)
-                    let codepoint = ch as u32;
-                    match char::from_u32(codepoint) {
-                        Some(_) => {
-                            temp_char_list.push(ch);
-                        },
-                        None => {
-                        },
-                    };
+                for ch in ' '..='\u{D7FF}' {
+                    temp_char_list.push(ch);
+                }
+                // Skips invalid characters \u{D800} through \u{DFFF}
+                for ch2 in '\u{E000}'..='\u{10FFFF}' {
+                    temp_char_list.push(ch2);
                 }
             }
 
@@ -79,10 +75,10 @@ impl MTBFSearch {
             char_to_int_map.insert(temp_char_list[i], (i+1) as u32);
         }
 
-        // Handles 0th position (null) character of base 95
-        // (character is actually outside given unicode range)
-        int_to_char_map.insert(0, '􀀀');
-        char_to_int_map.insert('􀀀', 0);
+        // Handles 0th position (null) character
+        // (character is outside given unicode range)
+        int_to_char_map.insert(0, '\0');
+        char_to_int_map.insert('\0', 0);
 
         let max_length = max_length as u128;
 
@@ -211,26 +207,35 @@ impl MTBFSearch {
     }
 
     // Updates pass_guess_char_arr in binary search fashion
-    fn str_next(&mut self) -> Vec<char> {  
+    fn str_next(&mut self) -> Vec<char> {
+        // If char at index is the 'null' character
+        if self.pass_guess_char_arr[self.curr_index] == '\0' {
+            self.pass_guess_char_arr.remove(self.curr_index);
+            self.pass_guess_char_arr.insert(self.curr_index, self.first_char);
+            return self.pass_guess_char_arr.clone();
+        }
         // If char at index is not the last character
-        if self.pass_guess_char_arr[self.curr_index] != self.last_char {
+        else if self.pass_guess_char_arr[self.curr_index] != self.last_char {
 
             let temp_char = self.pass_guess_char_arr[self.curr_index];
             let next_uni_codepoint: u32 = (temp_char as u32 + 1) as u32;
             let next_char_mapping: u32 = next_uni_codepoint-31;
             
-            //println!("{:?}", self.pass_guess_char_arr);
+            if next_uni_codepoint >= 0x10F6FF {
+                println!("{:?}", self.pass_guess_char_arr);
+            }
             // Change pass_guess_char_arr' character at curr_index position
             self.pass_guess_char_arr.remove(self.curr_index);
             
             self.pass_guess_char_arr.insert(self.curr_index, char::from_u32(next_uni_codepoint)
                                                             .unwrap_or(self.int_to_char_map[&next_char_mapping]));
-            
+
             return self.pass_guess_char_arr.clone();
         }
 
         // If char at index is last 
         else {
+            
             if self.pass_guess_char_arr.len() == 1 {
                 // Reset first character
                 self.pass_guess_char_arr.remove(0);
@@ -260,7 +265,6 @@ impl MTBFSearch {
             else {
                 //Increment currIndex
                 self.curr_index += 1;
-                
                 let mut return_string = self.str_next();
                 //Decrement currIndex
                 self.curr_index -= 1;

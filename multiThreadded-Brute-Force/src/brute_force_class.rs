@@ -48,16 +48,12 @@ impl BFSearch {
             // Full Unicode Library
             'F'|'f' => {
                 // From space character throughout the entire unicode library
-                for ch in ' '..='𫠝' {                
-                    // If valid unicode character, then push to list
-                    let codepoint = ch as u32;
-                    match char::from_u32(codepoint) {
-                        Some(_) => {
-                            temp_char_list.push(ch);
-                        },
-                        None => {
-                        },
-                    };
+                for ch in ' '..='\u{D7FF}' {
+                    temp_char_list.push(ch);
+                }
+                // Skips invalid characters \u{D800} through \u{DFFF}
+                for ch2 in '\u{E000}'..='\u{10FFFF}' {
+                    temp_char_list.push(ch2);
                 }
             }
 

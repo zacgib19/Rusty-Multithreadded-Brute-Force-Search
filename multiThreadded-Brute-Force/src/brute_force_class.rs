@@ -3,20 +3,17 @@ use std::collections::HashMap;
 
 // Seen as class variables
 pub struct BFSearch {
-    max_length: i8,
-
-    real_password: String,
     real_password_char_arr: Vec::<char>,
 
-    pub pass_guess: String,
-    pass_guess_char_arr: Vec::<char>,
+    pub pass_guess: String,  // Only used for converting to string at the very end
+    pub pass_guess_char_arr: Vec::<char>,
 
     pub num_guesses: u128,
+    max_num_guesses: u128,
     curr_index: usize,       //Index for string array in binary search algorithm
 
     first_char: char,           
     last_char: char,
-    last_guess: Vec::<char>,
 
     pub is_found: bool,
 }
@@ -26,6 +23,7 @@ impl BFSearch {
 
     // Constructor that implements default variables
     pub fn new(max_length: i8, input_password: &str, search_complexity: char) -> Self {
+        let mut temp_char_list: Vec<char> = Vec::new();
         let temp_f_char: char = ' '; //Temporary character used for first_char
         let mut temp_l_char: char = ' '; //Temporary character used for last_char
         
@@ -33,11 +31,23 @@ impl BFSearch {
         match search_complexity {
             // Basic ASCII
             'B'|'b' => {
-                temp_l_char = '~';         
+                //DEBUGGING should be from ' ' to '~'
+                for ch in ' '..='~' {   
+                    temp_char_list.push(ch);
+                }
+                temp_l_char = '~';          
             },
 
             // Full Unicode Library
             'F'|'f' => {
+                // From space character throughout the entire unicode library
+                for ch in ' '..='\u{D7FF}' {
+                    temp_char_list.push(ch);
+                }
+                // Skips invalid characters \u{D800} through \u{DFFF}
+                for ch2 in '\u{E000}'..='\u{10FFFF}' {
+                    temp_char_list.push(ch2);
+                }
                 temp_l_char = '\u{10FFFF}';
             }
 
@@ -45,25 +55,31 @@ impl BFSearch {
             _ => {
                 panic!("Invalid search_complexity character passed in")
             }
-
         }
         
+        // Converts max_length to u128
+        let max_length = max_length as u128;
+
+        // Calculate max amount of guesses
+        let mut max_guess: u128 = 0;
+        let num_chars: u128 = temp_char_list.len() as u128;
+        for len_index in 1..=max_length {
+            max_guess += u128::pow(num_chars, len_index as u32);
+        }
+
         // Initalizes and returns BFsearch Struct (no semicolon)
         Self {
-            max_length,
-
-            real_password: String::from(input_password),
             real_password_char_arr: input_password.chars().collect::<Vec<char>>(),
 
             pass_guess: String::new(),
             pass_guess_char_arr: vec![temp_f_char],
             
             num_guesses: 0,
+            max_num_guesses: max_guess,
             curr_index: 0,
 
             first_char: temp_f_char,
             last_char: temp_l_char,
-            last_guess: Vec::new(),
 
             is_found: false,
         }
@@ -72,7 +88,6 @@ impl BFSearch {
    
     // Starts brute force search
     pub fn start_search (&mut self) {   
-        self.get_last_guess();
         
         loop {
             self.num_guesses += 1;
@@ -90,14 +105,6 @@ impl BFSearch {
         self.cleanup_to_string();
     }
 
-    // Sets last_guess to max_length copies of the last character in char_from_int_map
-    fn get_last_guess (&mut self) {
-        // Figure out last_guess
-        for _i in 0..self.max_length {
-            self.last_guess.push(self.last_char);
-        }
-    }
-
     // Constantly makes this check to see if password matches
     fn is_pw_match(&self) -> bool {
         self.pass_guess_char_arr == self.real_password_char_arr
@@ -105,7 +112,7 @@ impl BFSearch {
 
     // Check to see if search needs to end
     fn is_last_guess(&self) -> bool {
-        self.pass_guess_char_arr == self.last_guess
+        self.num_guesses == self.max_num_guesses
     }
     
     // Converts char array to string

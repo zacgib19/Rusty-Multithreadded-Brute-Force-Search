@@ -1,25 +1,21 @@
 use std::char;
-use std::collections::HashMap;
+use std::thread;
 extern crate num_cpus;
 
 // Seen as class variables
 pub struct MTBFSearch {
-    max_length: u128,  
-    
-    real_password: String,
     real_password_char_arr: Vec::<char>,
 
     pub pass_guess: String,
-    pass_guess_char_arr: Vec::<char>,
+    starting_guesses: Vec<Vec<char>>,
 
     max_num_guesses: u128,
+    num_threads: i8,
     pub num_guesses: u128,
     guessing_size: u128,
 
-    curr_index: usize,       //Index for string array in binary search algorithm
-    first_char: char,           
-    last_char: char,
-    last_guess: Vec::<char>,
+    f_char: char,           
+    l_char: char,
 
     pub is_found: bool,
 }
@@ -85,7 +81,7 @@ impl MTBFSearch {
             let mut list_of_remainders: Vec::<u128> = vec!();
             let mut dividend = guess_num;
 
-            // Converts to base n from base 10, where n is amount of possible characters
+            // Converts from base 10 to base 'n', where n is amount of possible characters
             // Another way to conceptually think about passwords
             while dividend > 0 {
                 list_of_remainders.push((dividend % base));
@@ -116,40 +112,86 @@ impl MTBFSearch {
             vec_of_pass_guesses.push(guess_to_char_array(starting_point, num_chars, &temp_char_list));
         }
 
+        //Converts variables to smaller sizes to save space
+        let num_threads: i8 = num_threads as i8;
+
         println!("Char_Array of starting_guesses: {:?}", vec_of_pass_guesses);
 
         // Initalizes and returns MTBFsearch Struct (no semicolon to return struct)
         Self {
-            max_length,
-
-            real_password: String::from(input_password),
             real_password_char_arr: input_password.chars().collect::<Vec<char>>(),
 
             pass_guess: String::new(),
-            pass_guess_char_arr: vec!(temp_f_char),
+            starting_guesses: vec_of_pass_guesses,
                 
             max_num_guesses: max_guess,
+            num_threads,
             num_guesses: 0,
             guessing_size,
 
-            curr_index: 0,
-            first_char: temp_f_char,
-            last_char: temp_l_char,
-            last_guess: Vec::new(),
+            f_char: temp_f_char,
+            l_char: temp_l_char,
 
             is_found: false,
         }
     }
-    
+
     // Master Controller over threads, initiallizes search
     pub fn start_search (&mut self) {
+        // Initiallize pool of worker threads
+        //let mut worker_threads = Vec::new();
+        let mut worker1 = new_worker {
+            real_pass_char_arr: self.real_password_char_arr.clone(),
+            pass_guess_char_arr: self.starting_guesses[0].clone(),
+            num_guesses: 0,
+            max_num_guesses: self.guessing_size, //Guessing size of the thread
+            first_char: self.f_char,
+            last_char: self.l_char,
+            curr_index: 0,
+            is_found: false,
+        };
+
+        let thrd = thread::spawn(move || {
+            worker1.single_thread_search();
+        });
+
         
+        // Give workers their starting guess, # of guesses to search, etc
+
+        // Once a result has been received from a worker
+        // Pause all other threads
+            // If Result.isFound == true
+                //Stop all other threads
+            // Else
+                //Resume other threads
     }
 
-    // Starts brute force search
-    pub fn single_thread_search (&mut self) {   
-        self.get_last_guess();
-        
+    // Converts char array to string
+    fn cleanup_to_string(&mut self, chr_arr: Vec<char>) {
+        for ch in &chr_arr {
+            self.pass_guess.push(*ch);
+        }
+    }
+       
+}
+
+struct new_worker {
+    real_pass_char_arr: Vec<char>,
+    pass_guess_char_arr: Vec<char>,
+
+    num_guesses: u128,
+    max_num_guesses: u128,      // Guessing size for each thread
+
+    first_char: char,
+    last_char: char,
+
+    curr_index: usize,       //Index for string array in binary search algorithm
+    is_found: bool
+}
+
+impl new_worker {
+    // Worker thread function, supposed to return Result struct
+    fn single_thread_search (&mut self) -> thread_result {   
         loop {
             self.num_guesses += 1;
             if self.is_pw_match() {
@@ -159,35 +201,28 @@ impl MTBFSearch {
                 break;
             } else {
                 self.curr_index = 0;
-                self.pass_guess_char_arr = self.str_next();  
+                self.pass_guess_char_arr = self.str_next(); 
+                println!("{:?}", self.pass_guess_char_arr); 
             }            
         }
-        self.cleanup_to_string();
-    }
 
-    // Sets last_guess to max_length copies of the last character
-    fn get_last_guess (&mut self) {
-        // Figure out last_guess
-        for _i in 0..self.max_length {
-            self.last_guess.push(self.last_char);
-        }
+        //Packages up the result and sends it back
+        let TR = thread_result {
+            num_guesses: self.num_guesses,
+            curr_guess: self.pass_guess_char_arr.clone(),
+            is_found: self.is_found,
+        };
+        return TR;
     }
 
     // Constantly makes this check to see if password matches
     fn is_pw_match(&self) -> bool {
-        self.pass_guess_char_arr == self.real_password_char_arr
+        self.pass_guess_char_arr == self.real_pass_char_arr
     }
 
     // Check to see if search needs to end
     fn is_last_guess(&self) -> bool {
-        self.num_guesses == self.max_num_guesses
-    }
-    
-    // Converts char array to string
-    fn cleanup_to_string(&mut self) {
-        for ch in &self.pass_guess_char_arr {
-            self.pass_guess.push(*ch);
-        }
+        self.num_guesses > self.max_num_guesses
     }
 
     // Updates pass_guess_char_arr in binary search fashion
@@ -230,12 +265,20 @@ impl MTBFSearch {
             }
         }
 
+        // If length is 0 (empty list)
+        if self.pass_guess_char_arr.len() == 0 {
+            self.pass_guess_char_arr.push(self.first_char);
+            return self.pass_guess_char_arr.clone();
+        }
+
         // If char at index is the 'null' character
-        if self.pass_guess_char_arr[self.curr_index] == '\0' {
+        else if self.pass_guess_char_arr[self.curr_index] == '\0' {
             self.pass_guess_char_arr.remove(self.curr_index);
             self.pass_guess_char_arr.insert(self.curr_index, self.first_char);
             return self.pass_guess_char_arr.clone();
         }
+
+        
         // If char at index is not the last character
         else if self.pass_guess_char_arr[self.curr_index] != self.last_char {
             let mut unicode_looper = UnicodeWrapper::new((self.pass_guess_char_arr[self.curr_index]) as u32);
@@ -243,9 +286,7 @@ impl MTBFSearch {
             // Change pass_guess_char_arr' character at curr_index position
             self.pass_guess_char_arr.remove(self.curr_index);
             
-            self.pass_guess_char_arr.insert(self.curr_index, unicode_looper.next().unwrap());//next_uni_codepoint)
-                                                            //.unwrap_or(self.int_to_char_map[&next_char_mapping]));
-            //println!("{:?}", self.pass_guess_char_arr);
+            self.pass_guess_char_arr.insert(self.curr_index, unicode_looper.next().unwrap());
             return self.pass_guess_char_arr.clone();
         }
 
@@ -292,5 +333,11 @@ impl MTBFSearch {
                 return return_string;
             }
         };
-    }   
+    }
+}
+
+struct thread_result {
+    num_guesses: u128,
+    curr_guess: Vec<char>,
+    is_found: bool
 }

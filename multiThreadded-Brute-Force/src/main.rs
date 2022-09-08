@@ -8,7 +8,7 @@ fn main() {
     let mut max_length: i8;
     let mut password = String::new();
     let mut complexity_choice: char;
-    let mut has_guessed_correct: bool = false;
+    let has_guessed_correct: bool = false;
     let mut want_to_crack: bool = true;
 
     //Welcome message
@@ -28,7 +28,7 @@ fn main() {
             io::stdin().read_line(&mut max_len_input).expect("Failed to read line");
 
             // Checks if entered string is number
-            let mut max_len_input: i8 = match max_len_input.trim().parse() {
+            let max_len_input: i8 = match max_len_input.trim().parse() {
                 Ok(num) => num,
 
                 Err(_) => {

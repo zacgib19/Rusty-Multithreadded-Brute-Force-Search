@@ -1,5 +1,6 @@
 use std::char;
 use std::thread;
+use std::sync::mpsc;
 extern crate num_cpus;
 
 // Seen as class variables
@@ -84,7 +85,7 @@ impl MTBFSearch {
             // Converts from base 10 to base 'n', where n is amount of possible characters
             // Another way to conceptually think about passwords
             while dividend > 0 {
-                list_of_remainders.push((dividend % base));
+                list_of_remainders.push(dividend % base);
                 print!("{}", dividend);
                 dividend = dividend / base; //Integer division
                 println!(", to {} w/ remainder {:?}", dividend, list_of_remainders[list_of_remainders.len()-1]);
@@ -139,27 +140,47 @@ impl MTBFSearch {
     // Master Controller over threads, initiallizes search
     pub fn start_search (&mut self) {
         // Initiallize pool of worker threads
-        //let mut worker_threads = Vec::new();
-        let mut worker1 = new_worker {
-            real_pass_char_arr: self.real_password_char_arr.clone(),
-            pass_guess_char_arr: self.starting_guesses[0].clone(),
-            num_guesses: 0,
-            max_num_guesses: self.guessing_size, //Guessing size of the thread
-            first_char: self.f_char,
-            last_char: self.l_char,
-            curr_index: 0,
-            is_found: false,
-        };
+        let mut workers: Vec<new_worker> = Vec::new();
 
-        let thrd = thread::spawn(move || {
-            worker1.single_thread_search();
-        });
+        //Set up MPSC channel
+        //let (tx, rx) = mpsc::channel();
+        //let mut transmitters = Vec::new();
 
-        
-        // Give workers their starting guess, # of guesses to search, etc
+        for i in 0..self.num_threads {
+            // Give workers their starting guess, # of guesses to search, etc
+            let temp_worker = new_worker {
+                real_pass_char_arr: self.real_password_char_arr.clone(),
+                pass_guess_char_arr: self.starting_guesses[i as usize].clone(),
+                num_guesses: 0,
+                max_num_guesses: self.guessing_size, //Guessing size of the thread
+                first_char: self.f_char,
+                last_char: self.l_char,
+                curr_index: 0,
+                is_found: false,
+            };
+            workers.push(temp_worker);
 
+            // Clone the transmitter num_thread-1 times
+            if i != 0 {
+                //transmitters.push(mpsc::Sender::clone(&tx));
+            }
+        }
+
+        let mut wkr_found_pass: bool = false;
+        // All the workers start their processes
+        for mut wkr in workers {
+            let _ = thread::spawn(move || {
+                wkr_found_pass = wkr.single_thread_search();
+            });
+        }
+        /*
+        for received in rx {
+            if received == true {
+
+            }
+        }
+        */
         // Once a result has been received from a worker
-        // Pause all other threads
             // If Result.isFound == true
                 //Stop all other threads
             // Else
@@ -191,7 +212,7 @@ struct new_worker {
 
 impl new_worker {
     // Worker thread function, supposed to return Result struct
-    fn single_thread_search (&mut self) -> thread_result {   
+    fn single_thread_search (&mut self) -> bool {   
         loop {
             self.num_guesses += 1;
             if self.is_pw_match() {
@@ -202,17 +223,10 @@ impl new_worker {
             } else {
                 self.curr_index = 0;
                 self.pass_guess_char_arr = self.str_next(); 
-                println!("{:?}", self.pass_guess_char_arr); 
+                println!("{:?}, local guess # {}", self.pass_guess_char_arr, self.num_guesses); 
             }            
         }
-
-        //Packages up the result and sends it back
-        let TR = thread_result {
-            num_guesses: self.num_guesses,
-            curr_guess: self.pass_guess_char_arr.clone(),
-            is_found: self.is_found,
-        };
-        return TR;
+        return self.is_found;
     }
 
     // Constantly makes this check to see if password matches
@@ -334,10 +348,4 @@ impl new_worker {
             }
         };
     }
-}
-
-struct thread_result {
-    num_guesses: u128,
-    curr_guess: Vec<char>,
-    is_found: bool
 }

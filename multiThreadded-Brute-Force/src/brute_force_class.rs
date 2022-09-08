@@ -1,5 +1,4 @@
 use std::char;
-use std::collections::HashMap;
 
 // Seen as class variables
 pub struct BFSearch {
@@ -99,6 +98,7 @@ impl BFSearch {
             } else {
                 self.curr_index = 0;
                 self.pass_guess_char_arr = self.str_next();
+                println!("{:?}", self.pass_guess_char_arr)
             }            
         }
         

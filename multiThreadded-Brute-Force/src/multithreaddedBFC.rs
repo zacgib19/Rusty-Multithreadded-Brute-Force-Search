@@ -1,6 +1,7 @@
 use std::char;
 use std::thread;
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc};
+use std::sync::atomic::{AtomicBool, Ordering}
 extern crate num_cpus;
 
 // Seen as class variables
@@ -19,6 +20,10 @@ pub struct MTBFSearch {
     l_char: char,
 
     pub is_found: bool,
+
+    //MPSC Channels
+    is_found_channel: mpsc::channel(sender, receiver),
+    kill_early_channel: mpsc::channel(sender, receiver)
 }
 
 // Seen as class functions
@@ -103,8 +108,8 @@ impl MTBFSearch {
         }
 
         // Set up vec of vecs for passguess with starting guesses
-        let num_threads: u128 = (num_cpus::get_physical()) as u128; // Get number of cores in the system
-        let mut vec_of_pass_guesses: Vec<Vec<char>> = Vec::new(); // Vec<char> is faster than strings
+        let num_threads: u128 = 2;//(num_cpus::get_physical()) as u128; // Get number of cores in the system
+        let mut vec_of_pass_guesses: Vec<Vec<char>> = Vec::new(); // Vec<Vec<char>> is faster than Vec<strings>
         let guessing_size = max_guess / num_threads; //Integer division
         
         // Evenly divides the starting points
@@ -138,14 +143,13 @@ impl MTBFSearch {
     }
 
     // Master Controller over threads, initiallizes search
-    pub fn start_search (&mut self) {
-        // Initiallize pool of worker threads
+    pub async fn start_search (&mut self) {
+        // Initiallize pool of worker structs & worker Threads
+        // MUST be done here instead of in new(), because of lifetime shenanigans
         let mut workers: Vec<new_worker> = Vec::new();
+        let mut worker_threads = Vec::new();
 
-        //Set up MPSC channel
-        //let (tx, rx) = mpsc::channel();
-        //let mut transmitters = Vec::new();
-
+        // Create worker structs
         for i in 0..self.num_threads {
             // Give workers their starting guess, # of guesses to search, etc
             let temp_worker = new_worker {
@@ -159,32 +163,16 @@ impl MTBFSearch {
                 is_found: false,
             };
             workers.push(temp_worker);
-
-            // Clone the transmitter num_thread-1 times
-            if i != 0 {
-                //transmitters.push(mpsc::Sender::clone(&tx));
-            }
         }
 
         let mut wkr_found_pass: bool = false;
         // All the workers start their processes
         for mut wkr in workers {
             let _ = thread::spawn(move || {
-                wkr_found_pass = wkr.single_thread_search();
+                Sender::clone(&s).send(wkr.single_thread_search());
             });
         }
-        /*
-        for received in rx {
-            if received == true {
-
-            }
-        }
-        */
-        // Once a result has been received from a worker
-            // If Result.isFound == true
-                //Stop all other threads
-            // Else
-                //Resume other threads
+        
     }
 
     // Converts char array to string
@@ -211,22 +199,38 @@ struct new_worker {
 }
 
 impl new_worker {
-    // Worker thread function, supposed to return Result struct
-    fn single_thread_search (&mut self) -> bool {   
+    // Worker thread function, modifies struct, inputs are the two channels
+    async fn single_thread_search (&mut self, 
+                                   &found_channel: is_found_channel, 
+                                   &kill_channel: kill_early_channel) 
+    {   
         loop {
-            self.num_guesses += 1;
-            if self.is_pw_match() {
-                self.is_found = true;   
-                break;
-            } else if self.is_last_guess() {
-                break;
-            } else {
-                self.curr_index = 0;
-                self.pass_guess_char_arr = self.str_next(); 
-                println!("{:?}, local guess # {}", self.pass_guess_char_arr, self.num_guesses); 
-            }            
+            match kill_early_channel.try_recv() {
+
+                // Kill message received 
+                Ok(_) => {
+                    break;
+                }
+
+                // No kill message received
+                Err() => {
+                    self.num_guesses += 1;
+                    if self.is_pw_match() {
+                        self.is_found = true;
+                        found_channel.sender.send(self.is_found);   
+                        break;
+                    }
+                    else if self.is_last_guess() {
+                        break;
+                    } 
+                    else {
+                        self.curr_index = 0;
+                        self.pass_guess_char_arr = self.str_next(); 
+                        println!("{:?}, local guess # {}", self.pass_guess_char_arr, self.num_guesses); 
+                    }
+                }   
+            }         
         }
-        return self.is_found;
     }
 
     // Constantly makes this check to see if password matches
@@ -306,7 +310,6 @@ impl new_worker {
 
         // If char at index is last 
         else {
-            
             if self.pass_guess_char_arr.len() == 1 {
                 // Reset first character
                 self.pass_guess_char_arr.remove(0);

@@ -115,7 +115,7 @@ fn main() {
             }
         }
 
-        println!("\nStarting normal brute force cracking. NOTE, this may take a while!");
+        println!("\nStarting normal brute force cracking. NOTE, this may take a while!\n");
 
         // CALL BFSEARCH STRUCT instance HERE  
         /*
@@ -142,6 +142,7 @@ fn main() {
 
         let start_MTBF_time = Instant::now();
         MTBFS.start_search();
+
         let stop_MTBF_time = Instant::now();
 
         let MTBF_time_elapsed = stop_MTBF_time - start_MTBF_time;

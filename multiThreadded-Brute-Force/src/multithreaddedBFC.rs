@@ -1,7 +1,7 @@
 use std::char;
 use std::thread;
 use std::sync::{mpsc, Arc};
-use std::sync::atomic::{AtomicBool, Ordering}
+use std::sync::atomic::{AtomicBool, Ordering};
 extern crate num_cpus;
 
 // Seen as class variables
@@ -19,11 +19,8 @@ pub struct MTBFSearch {
     f_char: char,           
     l_char: char,
 
-    pub is_found: bool,
-
-    //MPSC Channels
-    is_found_channel: mpsc::channel(sender, receiver),
-    kill_early_channel: mpsc::channel(sender, receiver)
+    pub is_found: bool
+    
 }
 
 // Seen as class functions
@@ -91,24 +88,24 @@ impl MTBFSearch {
             // Another way to conceptually think about passwords
             while dividend > 0 {
                 list_of_remainders.push(dividend % base);
-                print!("{}", dividend);
+                //print!("{}", dividend);
                 dividend = dividend / base; //Integer division
-                println!(", to {} w/ remainder {:?}", dividend, list_of_remainders[list_of_remainders.len()-1]);
+                //println!(", to {} w/ remainder {:?}", dividend, list_of_remainders[list_of_remainders.len()-1]);
             }
             
-            println!("{:?}", list_of_remainders);
+            //println!("{:?}", list_of_remainders);
             // Convert remainders to characters
             let mut vec_char: Vec<char> = Vec::new();
             for i in list_of_remainders {
                 let ch = chr_list[i as usize];
                 vec_char.push(ch);
             }
-            println!("Remainders turn into: {:?} \n", vec_char);
+            //println!("Remainders turn into: {:?} \n", vec_char);
             return vec_char;
         }
 
         // Set up vec of vecs for passguess with starting guesses
-        let num_threads: u128 = 2;//(num_cpus::get_physical()) as u128; // Get number of cores in the system
+        let num_threads: u128 = 6;//(num_cpus::get_physical()) as u128; // Get number of cores in the system
         let mut vec_of_pass_guesses: Vec<Vec<char>> = Vec::new(); // Vec<Vec<char>> is faster than Vec<strings>
         let guessing_size = max_guess / num_threads; //Integer division
         
@@ -121,7 +118,7 @@ impl MTBFSearch {
         //Converts variables to smaller sizes to save space
         let num_threads: i8 = num_threads as i8;
 
-        println!("Char_Array of starting_guesses: {:?}", vec_of_pass_guesses);
+        //println!("Char_Array of starting_guesses: {:?}", vec_of_pass_guesses);
 
         // Initalizes and returns MTBFsearch Struct (no semicolon to return struct)
         Self {
@@ -143,14 +140,20 @@ impl MTBFSearch {
     }
 
     // Master Controller over threads, initiallizes search
-    pub async fn start_search (&mut self) {
+    pub fn start_search (&mut self) {
+        
         // Initiallize pool of worker structs & worker Threads
         // MUST be done here instead of in new(), because of lifetime shenanigans
         let mut workers: Vec<new_worker> = Vec::new();
-        let mut worker_threads = Vec::new();
 
+        // Channel is set up to block master thread with recv
+        let (sender, receiver) = mpsc::channel();
+        
+        let is_solution_found = Arc::new(AtomicBool::new(false));
+        
         // Create worker structs
         for i in 0..self.num_threads {
+
             // Give workers their starting guess, # of guesses to search, etc
             let temp_worker = new_worker {
                 real_pass_char_arr: self.real_password_char_arr.clone(),
@@ -162,17 +165,42 @@ impl MTBFSearch {
                 curr_index: 0,
                 is_found: false,
             };
+            
             workers.push(temp_worker);
         }
 
-        let mut wkr_found_pass: bool = false;
-        // All the workers start their processes
+        // Set up mpsc and semaphore
         for mut wkr in workers {
-            let _ = thread::spawn(move || {
-                Sender::clone(&s).send(wkr.single_thread_search());
+            let is_solution_found = is_solution_found.clone();
+            let sender_n = sender.clone();
+            thread::spawn(move || {
+                wkr.single_thread_search(is_solution_found, sender_n);
             });
         }
+
+        println!("worker number 1");
         
+        //This sending-receiving is only done to block the master thread, and get the worker threads started
+        match receiver.try_recv() {
+            Ok(_) => {
+                // If semaphore is true
+                if is_solution_found.load(Ordering::Relaxed) == true {
+                    println!("Password granted!");
+                }
+                // If semaphore is false
+                else {
+                    println!("Password denied");
+                }
+            }
+
+            Err(Empty) => {
+                println!("Nothing is in channel yet");
+            }
+            Err(disconnected) => {
+                panic!("Sender disconnected!")
+            }
+        }
+
     }
 
     // Converts char array to string
@@ -199,39 +227,44 @@ struct new_worker {
 }
 
 impl new_worker {
-    // Worker thread function, modifies struct, inputs are the two channels
+    // Worker thread function, modifies struct
     async fn single_thread_search (&mut self, 
-                                   &found_channel: is_found_channel, 
-                                   &kill_channel: kill_early_channel) 
-    {   
-        loop {
-            match kill_early_channel.try_recv() {
+                                   is_solution_found: Arc<AtomicBool>,
+                                   sender: mpsc::Sender<bool>) {
 
-                // Kill message received 
-                Ok(_) => {
-                    break;
-                }
+        loop {    
+            self.num_guesses += 1;
+            if self.is_pw_match() {
+                self.is_found = true;
+                
+                match sender.send(self.is_found) {
+                    Ok(_) => {},
+                    Err(_) => {
+                        println!("Receiver has stopped listening")
+                    }
+                };  
+                
+                //Set semaphore to true
+                is_solution_found.store(true, Ordering::Relaxed);
+                break;
+            }
 
-                // No kill message received
-                Err() => {
-                    self.num_guesses += 1;
-                    if self.is_pw_match() {
-                        self.is_found = true;
-                        found_channel.sender.send(self.is_found);   
-                        break;
-                    }
-                    else if self.is_last_guess() {
-                        break;
-                    } 
-                    else {
-                        self.curr_index = 0;
-                        self.pass_guess_char_arr = self.str_next(); 
-                        println!("{:?}, local guess # {}", self.pass_guess_char_arr, self.num_guesses); 
-                    }
-                }   
-            }         
-        }
+            // Check with the semaphore every 1000 guesses and break if the semaphore is true (no more work to do)
+            else if (self.num_guesses % 1000 == 0) && is_solution_found.load(Ordering::Relaxed) {
+                break;
+            }
+
+            else if self.is_last_guess() {
+                break;
+            } 
+            else {
+                self.curr_index = 0;
+                self.pass_guess_char_arr = self.str_next(); 
+                println!("{:?}, local guess # {}", self.pass_guess_char_arr, self.num_guesses); 
+            }
+        }                   
     }
+    
 
     // Constantly makes this check to see if password matches
     fn is_pw_match(&self) -> bool {

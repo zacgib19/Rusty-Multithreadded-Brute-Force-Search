@@ -13,7 +13,7 @@ pub struct MTBFSearch {
 
     max_num_guesses: u128,
     num_threads: i8,
-    pub num_guesses: u128,
+    pub total_num_guesses: u128,
     guessing_size: u128,
 
     f_char: char,           
@@ -129,7 +129,7 @@ impl MTBFSearch {
                 
             max_num_guesses: max_guess,
             num_threads,
-            num_guesses: 0,
+            total_num_guesses: 0,
             guessing_size,
 
             f_char: temp_f_char,
@@ -144,7 +144,7 @@ impl MTBFSearch {
         
         // Initiallize pool of worker structs & worker Threads
         // MUST be done here instead of in new(), because of lifetime shenanigans
-        let mut workers: Vec<new_worker> = Vec::new();
+        let mut workers: Vec<NewWorker> = Vec::new();
 
         // Channel is set up to block master thread with recv
         let (sender, receiver) = mpsc::channel();
@@ -155,7 +155,7 @@ impl MTBFSearch {
         for i in 0..self.num_threads {
 
             // Give workers their starting guess, # of guesses to search, etc
-            let temp_worker = new_worker {
+            let temp_worker = NewWorker {
                 real_pass_char_arr: self.real_password_char_arr.clone(),
                 pass_guess_char_arr: self.starting_guesses[i as usize].clone(),
                 num_guesses: 0,
@@ -178,14 +178,17 @@ impl MTBFSearch {
             });
         }
 
-        println!("worker number 1");
-        
         //This sending-receiving is only done to block the master thread, and get the worker threads started
-        match receiver.try_recv() {
+        match receiver.recv() {
             Ok(_) => {
                 // If semaphore is true
                 if is_solution_found.load(Ordering::Relaxed) == true {
-                    println!("Password granted!");
+                    self.is_found = true;
+                    
+                    for wkr in workers {
+                        self.total_num_guesses += wkr.num_guesses;
+                    }
+                
                 }
                 // If semaphore is false
                 else {
@@ -193,14 +196,14 @@ impl MTBFSearch {
                 }
             }
 
-            Err(Empty) => {
+            Err(empty) => {
                 println!("Nothing is in channel yet");
             }
+
             Err(disconnected) => {
                 panic!("Sender disconnected!")
             }
         }
-
     }
 
     // Converts char array to string
@@ -212,11 +215,11 @@ impl MTBFSearch {
        
 }
 
-struct new_worker {
+struct NewWorker {
     real_pass_char_arr: Vec<char>,
     pass_guess_char_arr: Vec<char>,
 
-    num_guesses: u128,
+    pub num_guesses: u128,
     max_num_guesses: u128,      // Guessing size for each thread
 
     first_char: char,
@@ -226,11 +229,13 @@ struct new_worker {
     is_found: bool
 }
 
-impl new_worker {
+impl NewWorker {
     // Worker thread function, modifies struct
-    async fn single_thread_search (&mut self, 
+    fn single_thread_search (&mut self, 
                                    is_solution_found: Arc<AtomicBool>,
                                    sender: mpsc::Sender<bool>) {
+
+        let precision = 50;
 
         loop {    
             self.num_guesses += 1;
@@ -249,18 +254,26 @@ impl new_worker {
                 break;
             }
 
-            // Check with the semaphore every 1000 guesses and break if the semaphore is true (no more work to do)
-            else if (self.num_guesses % 1000 == 0) && is_solution_found.load(Ordering::Relaxed) {
-                break;
+            // Check with the semaphore every n guesses and break if the semaphore is true (no more work to do)
+            else if self.num_guesses % precision == 0 { 
+                if is_solution_found.load(Ordering::Relaxed) {
+                    break;
+                }
             }
 
             else if self.is_last_guess() {
+                match sender.send(self.is_found) {
+                    Ok(_) => {},
+                    Err(_) => {
+                        println!("Receiver has stopped listening")
+                    }
+                };
                 break;
             } 
             else {
                 self.curr_index = 0;
                 self.pass_guess_char_arr = self.str_next(); 
-                println!("{:?}, local guess # {}", self.pass_guess_char_arr, self.num_guesses); 
+                //println!("{:?}, local guess # {}", self.pass_guess_char_arr, self.num_guesses); 
             }
         }                   
     }

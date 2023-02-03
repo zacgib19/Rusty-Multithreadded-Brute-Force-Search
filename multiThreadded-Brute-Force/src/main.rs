@@ -8,7 +8,6 @@ fn main() {
     let mut max_length: i8;
     let mut password = String::new();
     let mut complexity_choice: char;
-    let has_guessed_correct: bool = false;
     let mut want_to_crack: bool = true;
 
     //Welcome message
@@ -74,7 +73,7 @@ fn main() {
             }
         }
 
-        // Gets rid of whitespace after
+        // Gets rid of whitespace (newlines, spaces)
         let password = password.trim();
         let password = String::from(password);
         
@@ -154,9 +153,9 @@ fn main() {
         
         if has_MTBF_guessed_correct {
             println!("Password found! Your password was: {:?}", MTBFS.pass_guess);
-            println!("It took {} tries to guess, and {:?} milliseconds to crack!", MTBFS.num_guesses, MTBF_time_elapsed);
+            println!("It took {} tries to guess, and {:?} milliseconds to crack!", MTBFS.total_num_guesses, MTBF_time_elapsed);
         } else {
-            println!("Despite {} guesses, your password couldn't be cracked. Great work!", MTBFS.num_guesses);
+            println!("Despite {} guesses, your password couldn't be cracked. Great work!", MTBFS.total_num_guesses);
         }
         
         

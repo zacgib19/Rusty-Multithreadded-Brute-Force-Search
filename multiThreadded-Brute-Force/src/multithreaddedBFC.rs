@@ -23,6 +23,12 @@ pub struct MTBFSearch {
     
 }
 
+struct searchResults {
+    password: Vec::<char>,
+    num_guesses: u128,
+    is_found: bool
+}
+
 // Seen as class functions
 impl MTBFSearch {
 
@@ -170,7 +176,7 @@ impl MTBFSearch {
         }
 
         // Set up mpsc and semaphore
-        for mut wkr in workers {
+        for mut wkr in workers.clone() {
             let is_solution_found = is_solution_found.clone();
             let sender_n = sender.clone();
             thread::spawn(move || {
@@ -178,17 +184,21 @@ impl MTBFSearch {
             });
         }
 
-        //This sending-receiving is only done to block the master thread, and get the worker threads started
+        //This sending-receiving is only done to block the master thread, and gets the worker threads started
         match receiver.recv() {
-            Ok(_) => {
+            Ok(searchResults{password: password, num_guesses: thread_guesses, is_found: thread_found}) => {
                 // If semaphore is true
                 if is_solution_found.load(Ordering::Relaxed) == true {
+                    self.cleanup_to_string(password);
                     self.is_found = true;
-                    
-                    for wkr in workers {
+                    self.total_num_guesses = self.num_threads as u128 * thread_guesses as u128;
+
+                    /*
+                    for wkr in &workers {
+                        println!("add bitch");
                         self.total_num_guesses += wkr.num_guesses;
                     }
-                
+                    */
                 }
                 // If semaphore is false
                 else {
@@ -215,6 +225,7 @@ impl MTBFSearch {
        
 }
 
+#[derive(Clone)]
 struct NewWorker {
     real_pass_char_arr: Vec<char>,
     pass_guess_char_arr: Vec<char>,
@@ -233,16 +244,18 @@ impl NewWorker {
     // Worker thread function, modifies struct
     fn single_thread_search (&mut self, 
                                    is_solution_found: Arc<AtomicBool>,
-                                   sender: mpsc::Sender<bool>) {
+                                   sender: mpsc::Sender<searchResults>) {
 
-        let precision = 50;
+        // This is how often a worker thread will check the semaphore for a true
+        let guess_num_precision = 10;
 
         loop {    
             self.num_guesses += 1;
             if self.is_pw_match() {
                 self.is_found = true;
+                let package = searchResults{password: self.pass_guess_char_arr.clone(), num_guesses: self.num_guesses, is_found: self.is_found};
                 
-                match sender.send(self.is_found) {
+                match sender.send(package) {
                     Ok(_) => {},
                     Err(_) => {
                         println!("Receiver has stopped listening")
@@ -254,15 +267,15 @@ impl NewWorker {
                 break;
             }
 
-            // Check with the semaphore every n guesses and break if the semaphore is true (no more work to do)
-            else if self.num_guesses % precision == 0 { 
-                if is_solution_found.load(Ordering::Relaxed) {
-                    break;
-                }
+            // Check with the semaphore every n guesses and break loop if the semaphore is true (no more work to do)
+            else if self.num_guesses % guess_num_precision == 0 && is_solution_found.load(Ordering::Relaxed) {
+                break;
+            
             }
 
             else if self.is_last_guess() {
-                match sender.send(self.is_found) {
+                let package = searchResults{password: self.pass_guess_char_arr.clone(), num_guesses: self.num_guesses, is_found: self.is_found};
+                match sender.send(package) {
                     Ok(_) => {},
                     Err(_) => {
                         println!("Receiver has stopped listening")
@@ -275,7 +288,7 @@ impl NewWorker {
                 self.pass_guess_char_arr = self.str_next(); 
                 //println!("{:?}, local guess # {}", self.pass_guess_char_arr, self.num_guesses); 
             }
-        }                   
+        }
     }
     
 

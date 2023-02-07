@@ -111,7 +111,7 @@ impl MTBFSearch {
         }
 
         // Set up vec of vecs for passguess with starting guesses
-        let num_threads: u128 = 6;//(num_cpus::get_physical()) as u128; // Get number of cores in the system
+        let num_threads: u128 = (num_cpus::get_physical()) as u128; // Get number of cores in the system
         let mut vec_of_pass_guesses: Vec<Vec<char>> = Vec::new(); // Vec<Vec<char>> is faster than Vec<strings>
         let guessing_size = max_guess / num_threads; //Integer division
         
@@ -275,12 +275,7 @@ impl NewWorker {
 
             else if self.is_last_guess() {
                 let package = searchResults{password: self.pass_guess_char_arr.clone(), num_guesses: self.num_guesses, is_found: self.is_found};
-                match sender.send(package) {
-                    Ok(_) => {},
-                    Err(_) => {
-                        println!("Receiver has stopped listening")
-                    }
-                };
+                
                 break;
             } 
             else {

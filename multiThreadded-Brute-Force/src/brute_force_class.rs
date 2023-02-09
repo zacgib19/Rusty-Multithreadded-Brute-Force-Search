@@ -135,7 +135,7 @@ impl BFSearch {
         // Convert remainders to characters
         let mut vec_char: Vec<char> = Vec::new();
         for i in list_of_remainders {
-            let ch = chr_list[i as usize];
+            let ch = char::from_u32(i as u32);
             vec_char.push(ch);
         }
         //println!("Remainders turn into: {:?} \n", vec_char);

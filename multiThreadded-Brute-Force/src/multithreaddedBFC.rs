@@ -111,7 +111,7 @@ impl MTBFSearch {
         }
 
         // Set up vec of vecs for passguess with starting guesses
-        let num_threads: u128 = (num_cpus::get_physical()) as u128; // Get number of cores in the system
+        let num_threads: u128 = (num_cpus::get()) as u128; // Get number of cores in the system
         let mut vec_of_pass_guesses: Vec<Vec<char>> = Vec::new(); // Vec<Vec<char>> is faster than Vec<strings>
         let guessing_size = max_guess / num_threads; //Integer division
         
@@ -247,7 +247,7 @@ impl NewWorker {
                                    sender: mpsc::Sender<searchResults>) {
 
         // This is how often a worker thread will check the semaphore for a true
-        let guess_num_precision = 10;
+        let guess_num_precision = 10000;
 
         loop {    
             self.num_guesses += 1;

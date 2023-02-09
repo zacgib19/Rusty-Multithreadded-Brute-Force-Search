@@ -134,6 +134,12 @@ fn main() {
         } else {
             println!("Despite {} guesses, your password couldn't be cracked. Great work!", BFS.num_guesses);
         }
+
+        println!("Press enter to start the multithreadded search!");
+        let mut start_MT = String::new();
+        io::stdin().read_line(&mut start_MT).expect("Failed to read line");
+
+        println!("\nStarting multi-threadded brute force cracking. NOTE, this may take a while!\n");
         
         //CALL MTBFS HERE
         

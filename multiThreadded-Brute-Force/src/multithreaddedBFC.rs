@@ -221,8 +221,7 @@ impl MTBFSearch {
         for ch in &chr_arr {
             self.pass_guess.push(*ch);
         }
-    }
-       
+    }  
 }
 
 #[derive(Clone)]

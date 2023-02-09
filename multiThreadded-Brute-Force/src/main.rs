@@ -77,43 +77,6 @@ fn main() {
         let password = password.trim();
         let password = String::from(password);
         
-        // Details on search complexities
-        println!("\nHow in-depth would you like this search to go?\
-                 \nBasic: Only searches through the ASCII-code characters\
-                 \n(Faster, but will miss passwords with ALT-Code characters. Examples: Ö, ÿ, ☺)\n\
-                 \nFull: Will search through EVERY character in the entire Unicode Library.\
-                 \n(VERY Slow, but covers ALT-Code characters, and characters from every typable language\n");
-        
-        // Asks for search complexity
-        // Asks again if not a char
-        // Asks again if not correct character
-        loop {
-            let mut complexity_input = String::new();
-            println!("Please enter either B for Basic, or F for full.");
-            io::stdin().read_line(&mut complexity_input).expect("Failed to read line");
-
-            let num_of_char: i8 = complexity_input.trim().graphemes(true).count() as i8;
-        
-            if num_of_char == 0 {
-                println!("Invalid Entry! (didn't enter anything)");
-                continue;
-            } else {
-                // Converts to string slice, then trims the trailing newline
-                let mut complexity_input: &str = &complexity_input[..];
-                complexity_input = complexity_input.trim();
-
-                match complexity_input {
-                    "B"|"b"|"Basic"|"basic"|"BASIC" => complexity_choice = 'B',
-                    "F"|"f"|"Full"|"full"|"FULL" => complexity_choice = 'F',
-                    _=> {
-                        println!("\nInvalid entry! (not right character)");
-                        continue;
-                    }
-                };
-                break;
-            }
-        }
-
         println!("\nStarting normal brute force cracking. NOTE, this may take a while!\n");
 
         // CALL BFSEARCH STRUCT instance HERE  
@@ -142,7 +105,7 @@ fn main() {
         println!("\nStarting multi-threadded brute force cracking. NOTE, this may take a while!\n");
         
         //CALL MTBFS HERE
-        
+        /*
         let mut MTBFS = multithreaddedBFC::MTBFSearch::new(max_length, &password, complexity_choice);
 
         let start_MTBF_time = Instant::now();
@@ -164,7 +127,7 @@ fn main() {
             println!("Despite {} guesses, your password couldn't be cracked. Great work!", MTBFS.total_num_guesses);
         }
         
-        
+        */
         // Asks user if they want to continue 
         // Asks again if responce is not Yes or no
         // Convert to boolean for want_to_crack

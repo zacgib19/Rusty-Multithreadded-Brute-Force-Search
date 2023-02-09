@@ -81,7 +81,7 @@ fn main() {
 
         // CALL BFSEARCH STRUCT instance HERE  
         
-        let mut BFS = brute_force_class::BFSearch::new(max_length, &password, complexity_choice);
+        let mut BFS = brute_force_class::BFSearch::new(max_length, &password);
 
         let start_BF_time = Instant::now();
         BFS.start_search();

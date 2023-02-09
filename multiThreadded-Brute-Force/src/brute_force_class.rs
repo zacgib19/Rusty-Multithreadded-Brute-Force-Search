@@ -22,28 +22,10 @@ pub struct BFSearch {
 impl BFSearch {
 
     // Constructor that implements default variables
-    pub fn new(max_length: i8, input_password: &str, search_complexity: char) -> Self {
+    pub fn new(max_length: i8, input_password: &str) -> Self {
         let mut temp_char_list: Vec<char> = Vec::new();
         let temp_f_char: char = ' '; //Temporary character used for first_char
-        let mut temp_l_char: char = ' '; //Temporary character used for last_char
-        
-        // Sets unicode list to iterate over
-        match search_complexity {
-            // Basic ASCII
-            'B'|'b' => {
-                temp_l_char = '~';          
-            },
-
-            // Full Unicode Library
-            'F'|'f' => {
-                temp_l_char = '\u{10FFFF}';
-            }
-
-            // Crash program if anything else
-            _ => {
-                panic!("Invalid search_complexity character passed in")
-            }
-        }
+        let mut temp_l_char: char = '~'; //Temporary character used for last_char
         
         // Converts max_length to u128
         let max_length = max_length as u128;
@@ -128,14 +110,14 @@ impl BFSearch {
             list_of_remainders.push(dividend % self.num_possible_chars);
             //print!("{}", dividend);
             dividend = dividend / self.num_possible_chars; //Integer division
-            println!(", to {} w/ remainder {:?}", dividend, list_of_remainders[list_of_remainders.len()-1]);
+            //println!(", to {} w/ remainder {:?}", dividend, list_of_remainders[list_of_remainders.len()-1]);
         }
         
         //println!("{:?}", list_of_remainders);
         // Convert remainders to characters
         let mut vec_char: Vec<char> = Vec::new();
         for i in list_of_remainders {
-            let ch = char::from_u32(i as u32);
+            let ch = char::from_u32(i as u32).unwrap();
             vec_char.push(ch);
         }
         //println!("Remainders turn into: {:?} \n", vec_char);
